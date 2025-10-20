@@ -77,4 +77,5 @@ impl Config {
 #[derive(Debug, Deserialize, Clone)]
 pub struct FileRouteConfig {
     pub filename: String, // Relative to the server's root
+    pub methods: Option<Vec<String>>,
 }

@@ -8,7 +8,11 @@ use crate::Config;
 use crate::config::ServerConfig;
 use crate::ClientConnection;
 use crate::core::{Response, Request};
-use crate::server::default_html::{DEFAULT_404_PAGE, DEFAULT_WELCOME_PAGE};
+use crate::server::default_html::{
+    default_404_response,
+    default_welcome_response,
+    default_method_not_allowed_response
+};
 use crate::server::handler::serve_static_file;
 
 #[derive(Debug)]
@@ -150,22 +154,25 @@ impl Server {
 
         // Step 3: Show default welcome page only if root directory doesn't exist
         if !root_dir.exists() {
-            return Response::new(200, "OK")
-                .header("Content-Type", "text/html")
-                .with_body(DEFAULT_WELCOME_PAGE);
+            return default_welcome_response()
         }
 
         // Step 4: Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
-            let full_path = root_dir.join(&route_cfg.filename);
+            // ✅ Step 4.1: Check if method is allowed
+            if let Some(allowed_methods) = &route_cfg.methods {
+                if !allowed_methods.iter().any(|m| m.eq_ignore_ascii_case(&request.method)) {
+                    let allow_header = allowed_methods.join(", ");
+                    return default_method_not_allowed_response(Some(&allow_header));
+                }
+            }
 
-            // Use your static file handler
+            // ✅ Step 4.2: Serve static file
+            let full_path = root_dir.join(&route_cfg.filename);
             serve_static_file(&full_path)
         } else {
             // Route not defined in config, but root exists
-            Response::new(404, "Not Found")
-                .header("Content-Type", "text/html")
-                .with_body(DEFAULT_404_PAGE)
+            default_404_response()
         }
     }
 
