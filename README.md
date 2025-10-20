@@ -34,24 +34,19 @@
   - [✓] Send a fixed "Hello World" response.
   - [✓] Test connection handling.
 
-- [ ] **Routing Basic Requests**
-  - [ ] Implement simple routing based on URL paths in `server/route.rs`.
-  - [ ] Dispatch requests accordingly.
+- [✓] **Routing Basic Requests**
+  - [✓] Implement simple routing based on URL paths in `server/route.rs`.
+  - [✓] Dispatch requests accordingly.
 
-- [ ] **Serve Static Files**
-  - [ ] Implement logic in `handler/static.rs` to serve files from a directory.
-  - [ ] Map URL paths to file paths.
-  - [ ] Send file contents with proper headers.
-  - [ ] Test with static assets.
+- [✓] **Serve Static Files**
+  - [✓] Implement logic in `handler/static.rs` to serve files from a directory.
+  - [✓] Map URL paths to file paths.
+  - [✓] Send file contents with proper headers.
+  - [✓] Test with static assets.
 
-- [ ] **Implement Configuration Parsing**
-  - [ ] Define config structs in `config/mod.rs`.
-  - [ ] Load config from a TOML file at startup.
-  - [ ] Use config for static directory, port, server options.
-
-- [ ] **Add Basic Logging**
-  - [ ] Log requests and errors in `core/utils.rs` or server modules.
-  - [ ] Log method, path, and status.
+- [ ] **handle http methods**
+  - [ ] Implement handling for `GET`, `POST`, and `DELETE` methods in `core/request.rs` and `server/server.rs`.
+  - [ ] Validate method support and respond with appropriate status codes for unsupported methods.
 
 - [ ] **Handle CGI Scripts**
   - [ ] Implement CGI script execution in `handler/cgi.rs`.
@@ -164,10 +159,8 @@ Common status codes include:
 - 403 Forbidden: The server understood the request, but refuses to authorize it.
 - 404 Not Found: The server has not found anything matching the Request-URI.
 - 500 Internal Server Error: The server encountered an unexpected condition that prevented it from fulfilling the request.
-- 502 Bad Gateway: The server, while acting as a gateway or proxy, received an
-invalid response from the upstream server.
-- 503 Service Unavailable: The server is currently unable to handle the request due to temporary
-overloading or maintenance of the server.
+- 502 Bad Gateway: The server, while acting as a gateway or proxy, received an invalid response from the upstream server.
+- 503 Service Unavailable: The server is currently unable to handle the request due to temporary overloading or maintenance of the server.
 - 504 Gateway Timeout: The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server.
 
 ## Headers

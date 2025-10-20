@@ -1,6 +1,6 @@
 use std::net::{TcpStream, SocketAddr};
 use std::io::{Read, Write, ErrorKind, Result};
-use std::time::{Instant, Duration};
+use std::time::Instant;
 
 use crate::core::{Request, Response};
 
@@ -8,19 +8,22 @@ use crate::core::{Request, Response};
 pub struct ClientConnection {
     pub stream: TcpStream,
     pub peer_addr: SocketAddr,
+    pub local_addr: SocketAddr,
     pub buffer: Vec<u8>,
-    pub timeout: Duration,
     pub last_active: Instant,
 }
 
 impl ClientConnection {
-    pub fn new(mut stream: TcpStream, peer_addr: SocketAddr, timeout: Duration) -> std::io::Result<Self> {
+    pub fn new(mut stream: TcpStream, peer_addr: SocketAddr) -> std::io::Result<Self> {
+        let local_addr = stream.local_addr()?;
+
         stream.set_nonblocking(true)?;
+
         Ok(Self {
             stream,
             peer_addr,
+            local_addr,
             buffer: Vec::with_capacity(8192),
-            timeout,
             last_active: Instant::now(),
         })
     }
@@ -52,13 +55,10 @@ impl ClientConnection {
     pub fn refresh_activity(&mut self) {
         self.last_active = Instant::now();
     }
-
-    pub fn is_timed_out(&self) -> bool {
-        self.last_active.elapsed() > self.timeout
-    }
     
     pub fn send_response(&mut self, response: Response) -> Result<()> {
         let bytes = response.to_bytes();
+        println!("--- Raw HTTP Response ---\n{}", String::from_utf8_lossy(&bytes));
         self.stream.write_all(&bytes)?;
         self.stream.flush()?;
         Ok(())

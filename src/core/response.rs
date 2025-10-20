@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Write as FmtWrite;
 
+#[derive(Debug)]
 pub struct Response {
     pub status_code: u16,
     pub reason_phrase: String,
