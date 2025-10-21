@@ -43,12 +43,8 @@ impl ClientConnection {
         }
     }
     
-    pub fn parse_request(&self) -> Option<Request> {    
+    pub fn parse_request(&self) -> Option<(Request, usize)> {
         Request::parse(&self.buffer)
-    }
-
-    pub fn refresh_activity(&mut self) {
-        self.last_active = Instant::now();
     }
     
     pub fn send_response(&mut self, response: Response) -> Result<()> {

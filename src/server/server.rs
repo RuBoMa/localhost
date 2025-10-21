@@ -184,15 +184,11 @@ impl Server {
                     return Ok(false);
                 }
 
-                client.refresh_activity();
-
-                if let Some(request) = client.parse_request() {
-                    println!("--- Parsed Request from {} ---\n{:#?}", client.peer_addr, request);
-
-                    let response = self.handle_request(&request, &client);
-                    client.send_response(response)?; // Clean + readable
-
-                    // TODO: inspect request headers to decide keep-alive or close
+                if let Some((request, consumed)) = client.parse_request() {
+                    println!("Request received: {:#?} from {}", request, client.peer_addr);
+                    let response = self.handle_request(&request, client);
+                    client.send_response(response)?;
+                    client.buffer.drain(..consumed);
                 }
 
                 Ok(true)

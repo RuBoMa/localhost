@@ -10,8 +10,7 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn parse(raw: &[u8]) -> Option<Self> {
-        // Look for the split between headers and body: \r\n\r\n
+        pub fn parse(raw: &[u8]) -> Option<(Self, usize)> {
         let request = std::str::from_utf8(raw).ok()?;
         let header_end = request.find("\r\n\r\n")?;
 
@@ -32,20 +31,23 @@ impl Request {
             }
         }
 
-        let body = parse_body(&headers, body_part);
+        let (body, consumed_body_len) = parse_body(&headers, body_part);
+        let consumed = header_end + 4 + consumed_body_len;
 
-        Some(Request {
-            method,
-            uri,
-            version,
-            headers,
-            body,
-        })
+        Some((
+            Request {
+                method,
+                uri,
+                version,
+                headers,
+                body,
+            },
+            consumed,
+        ))
     }
-
 }
 
-fn parse_body(headers: &HashMap<String, String>, raw_body: &[u8]) -> Vec<u8> {
+fn parse_body(headers: &HashMap<String, String>, raw_body: &[u8]) -> (Vec<u8>, usize) {
     if let Some(encoding) = headers.get("Transfer-Encoding") {
         if encoding.eq_ignore_ascii_case("chunked") {
             return parse_chunked_body(raw_body).unwrap_or_default();
@@ -55,15 +57,14 @@ fn parse_body(headers: &HashMap<String, String>, raw_body: &[u8]) -> Vec<u8> {
     // Fallback: Use Content-Length if available
     if let Some(len_str) = headers.get("Content-Length") {
         if let Ok(len) = len_str.parse::<usize>() {
-            return raw_body[..len.min(raw_body.len())].to_vec();
+            let take_len = len.min(raw_body.len());
+            return (raw_body[..take_len].to_vec(), take_len);
         }
     }
-
-    // No clear indicator, return entire body
-    raw_body.to_vec()
+    (Vec::new(), 0)
 }
 
-fn parse_chunked_body(data: &[u8]) -> Option<Vec<u8>> {
+fn parse_chunked_body(data: &[u8]) -> Option<(Vec<u8>, usize)> {
     let mut i = 0;
     let mut result = Vec::new();
 
@@ -75,15 +76,30 @@ fn parse_chunked_body(data: &[u8]) -> Option<Vec<u8>> {
         let size = usize::from_str_radix(size_line.trim(), 16).ok()?;
 
         i += size_end + 2;
+        
         if size == 0 {
+            if data.len() < i + 2 || &data[i..i + 2] != b"\r\n" {
+                return None; // malformed trailing CRLF
+            }
+            i += 2; // consume trailing CRLF
             break;
         }
-        if i + size > data.len() {
+
+        // Check if chunk data + trailing CRLF available
+        if i + size + 2 > data.len() {
             return None;
         }
+
+        // Copy chunk data
         result.extend_from_slice(&data[i..i + size]);
-        i += size + 2;
+        i += size;
+
+        // Verify chunk ends with CRLF
+        if &data[i..i + 2] != b"\r\n" {
+            return None;
+        }
+        i += 2;
     }
 
-    Some(result)
+    Some((result, i))
 }
