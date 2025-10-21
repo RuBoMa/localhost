@@ -1,8 +1,9 @@
+client_timeout_secs = 120
+
 [[servers]]
 server_address = "127.0.0.1"
 ports = [8080, 8081]
 server_name = "localhost"
-client_timeout_secs = 120
 root = "routes"
 
   [servers.routes."/"]

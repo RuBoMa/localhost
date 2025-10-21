@@ -5,6 +5,9 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub servers: Vec<ServerConfig>,
+    
+    #[serde(default = "default_timeout_secs")]
+    pub client_timeout_secs: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -15,9 +18,6 @@ pub struct ServerConfig {
     
     #[serde(default)]
     pub root: String,
-
-    #[serde(default = "default_timeout_secs")]
-    pub client_timeout_secs: u64,
     
     #[serde(default)]
     pub routes: HashMap<String, FileRouteConfig>,

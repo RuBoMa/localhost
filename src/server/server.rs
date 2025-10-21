@@ -3,6 +3,7 @@ use std::io::{self, ErrorKind};
 use std::{thread, time::Duration};
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Instant;
 
 use crate::Config;
 use crate::config::ServerConfig;
@@ -54,11 +55,6 @@ impl ServerSocket {
         &self.configs[0]
     }
 
-    pub fn timeout(&self, server_name: Option<&str>) -> Duration {
-        Duration::from_secs(self.resolve_config(server_name)
-            .client_timeout_secs)
-    }
-
     /// Accepts all pending connections (non-blocking), returns new clients.
     pub fn try_accept(&self) -> Vec<ClientConnection> {
         let mut new_clients = Vec::new();
@@ -91,6 +87,7 @@ impl ServerSocket {
 pub struct Server {
     sockets: Vec<ServerSocket>,
     clients: Vec<ClientConnection>,
+    client_timeout: Duration,
 }
 
 impl Server {
@@ -114,6 +111,7 @@ impl Server {
             }
         }
 
+        let client_timeout = Duration::from_secs(config.client_timeout_secs);
         let mut sockets = Vec::new();
 
         for (addr, configs) in grouped {
@@ -130,6 +128,7 @@ impl Server {
         Ok(Server {
             sockets,
             clients: Vec::new(),
+            client_timeout,
         })
     }
 
@@ -197,6 +196,7 @@ impl Server {
                 }
 
                 if let Some((request, consumed)) = client.parse_request() {
+                    client.request_at = None;
                     println!("Request received: {:#?} from {}", request, client.peer_addr);
                     let response = self.handle_request(&request, client);
                     client.send_response(response)?;
@@ -213,6 +213,8 @@ impl Server {
     }
 
     pub fn poll(&mut self) {
+        let now = Instant::now();
+
         for socket in &self.sockets {
             let new_clients = socket.try_accept();
             self.clients.extend(new_clients);
@@ -221,6 +223,13 @@ impl Server {
         let mut i = 0;
         while i < self.clients.len() {
             let mut client = self.clients.swap_remove(i);
+    
+            // Check for request timeout before handling the client
+            if client.is_request_timed_out(now, self.client_timeout) {
+                eprintln!("[!] Connection timed out: {}", client.peer_addr);
+                // Do not push client back — drop connection
+                continue;
+            }
 
             let keep = match self.handle_client(&mut client) {
                 Ok(keep) => keep,
