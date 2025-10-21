@@ -189,6 +189,7 @@ impl Server {
             Ok(n) => {
                 if n == 0 {
                     println!("[*] Client {} closed the connection", client.peer_addr);
+                    let _ = client.stream.shutdown(std::net::Shutdown::Both);
                     return Ok(false);
                 }
 
@@ -219,6 +220,7 @@ impl Server {
             }
             Err(e) => {
                 eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
+                let _ = client.stream.shutdown(std::net::Shutdown::Both);
                 Ok(false)
             }
         }
