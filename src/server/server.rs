@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::io::{self, ErrorKind};
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
-use std::time::Instant;
 use std::{thread, time::Duration};
+use std::io::Write;
 
 use crate::config::ServerConfig;
 use crate::core::{Request, Response};
@@ -131,8 +131,6 @@ impl Server {
     }
 
     fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
-        let start = Instant::now();
-        
         // Step 1: Get the socket the client connected to (by local_addr)
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
             Some(sock) => sock,
@@ -152,8 +150,6 @@ impl Server {
 
         // Step 3: Show default welcome page only if root directory doesn't exist
         if !root_dir.exists() {
-            let elapsed = start.elapsed();
-            println!("[TIMING] {} - Welcome page: {}ms", request.uri, elapsed.as_millis());
             return Response::new(200, "OK")
                 .header("Content-Type", "text/html")
                 .with_body(DEFAULT_WELCOME_PAGE);
@@ -162,12 +158,8 @@ impl Server {
         // Step 4: Route matching
         let response = if let Some(route_cfg) = config.routes.get(&request.uri) {
             let full_path = root_dir.join(&route_cfg.filename);
-            let file_start = Instant::now();
-            
             // Use your static file handler
             let resp = serve_static_file(&full_path);
-            let file_elapsed = file_start.elapsed();
-            println!("[TIMING] {} - File serve: {}ms", request.uri, file_elapsed.as_millis());
             resp
         } else {
             // Route not defined in config, but root exists
@@ -176,55 +168,44 @@ impl Server {
                 .header("Content-Type", "text/html")
                 .with_body(DEFAULT_404_PAGE)
         };
-        
-        let total_elapsed = start.elapsed();
-        println!("[TIMING] {} - Total request time: {}ms", request.uri, total_elapsed.as_millis());
         response
     }
 
     fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
-        let client_start = Instant::now();
-        
-        match client.read_into_buffer() {
-            Ok(n) => {
-                if n == 0 {
-                    println!("[*] Client {} closed the connection", client.peer_addr);
-                    let _ = client.stream.shutdown(std::net::Shutdown::Both);
-                    return Ok(false);
-                }
+    match client.read_into_buffer() {
+        Ok(0) => {
+            println!("[*] Client {} closed the connection", client.peer_addr);
+            return Ok(false);
+        }
+        Ok(_) => {
+            client.refresh_activity();
 
-                client.refresh_activity();
+            if let Some(request) = client.parse_request() {
+                let response = self.handle_request(&request, &client)
+                    .header("Connection", "close");
 
-                if let Some(request) = client.parse_request() {
-                    let parse_time = client_start.elapsed();
-                    println!("[TIMING] Parse: {}ms for {}", parse_time.as_millis(), request.uri);
-                    
-                    println!(
-                        "--- Parsed Request from {} ---\n{:#?}",
-                        client.peer_addr, request
-                    );
+                client.send_response(response)?;
 
-                    let response_start = Instant::now();
-                    let response = self.handle_request(&request, &client);
-                    let response_time = response_start.elapsed();
-                    println!("[TIMING] Response generation: {}ms", response_time.as_millis());
-                    
-                    client.send_response(response)?; // Clean + readable
-                    let total_time = client_start.elapsed();
-                    println!("[TIMING] Total client handling: {}ms", total_time.as_millis());
+                // Important: flush before shutdown to ensure all data is written
+                client.stream.flush()?;
 
-                    // TODO: inspect request headers to decide keep-alive or close
-                }
+                // Then close the stream
+                client.stream.shutdown(std::net::Shutdown::Both)?;
 
-                Ok(true)
+                // Stop handling this client — done
+                return Ok(false);
             }
-            Err(e) => {
-                eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
-                let _ = client.stream.shutdown(std::net::Shutdown::Both);
-                Ok(false)
-            }
+
+            Ok(true)
+        }
+        Err(e) => {
+            eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
+            let _ = client.stream.shutdown(std::net::Shutdown::Both);
+            Ok(false)
         }
     }
+}
+
 
     pub fn run(&mut self) {
         // Create kqueue
@@ -237,13 +218,13 @@ impl Server {
         for socket in &self.sockets {
             let fd = socket.listener.as_raw_fd();
             let mut event = kevent64_s {
-                ident: fd as u64,           // WHAT to monitor (the socket fd)
-                filter: EVFILT_READ,        // WHAT KIND of event (read events)
-                flags: EV_ADD | EV_ENABLE,  // WHAT ACTION to take (register for read)
-                fflags: 0,                  // no filter-specific flags (none needed for EVFILT_READ)
-                data: 0,                    // no filter-specific data (none needed for EVFILT_READ)
-                udata: 0,                   // USER data (not used here)
-                ext: [0, 0],                // EXTENDED data (not used)
+                ident: fd as u64,          // WHAT to monitor (the socket fd)
+                filter: EVFILT_READ,       // WHAT KIND of event (read events)
+                flags: EV_ADD | EV_ENABLE, // WHAT ACTION to take (register for read)
+                fflags: 0,                 // no filter-specific flags (none needed for EVFILT_READ)
+                data: 0,                   // no filter-specific data (none needed for EVFILT_READ)
+                udata: 0,                  // USER data (not used here)
+                ext: [0, 0],               // EXTENDED data (not used)
             };
 
             unsafe {
