@@ -149,7 +149,6 @@ impl Server {
         // Step 2: Extract server_name from the Host header
         let host_header = request.headers.get("Host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
-
         let root_dir = Path::new(&config.root);
 
         // Step 3: Show default welcome page only if root directory doesn't exist
@@ -167,9 +166,22 @@ impl Server {
                 }
             }
 
-            // ✅ Step 4.2: Serve static file
-            let full_path = root_dir.join(&route_cfg.filename);
-            serve_static_file(&full_path)
+            // ✅ Step 4.2: Handle redirect if defined
+            if let Some(redirect) = &route_cfg.redirect {
+                return Response::redirect(redirect.to.clone(), redirect.code);
+            }
+
+            // ✅ Step 4.3: Serve static file if filename is defined
+            if let Some(filename) = &route_cfg.filename {
+                let full_path = root_dir.join(filename);
+                return serve_static_file(&full_path);
+            }
+
+            // ✅ Step 4.4: Misconfigured route (no redirect or filename)
+            return Response::new(500, "Internal Server Error")
+                .header("Content-Type", "text/html")
+                .with_body("<h1>500 Internal Server Error</h1><p>Route is misconfigured (no redirect or file).</p>");
+    
         } else {
             // Route not defined in config, but root exists
             default_404_response()

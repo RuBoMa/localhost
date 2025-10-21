@@ -12,6 +12,10 @@ root = "routes"
   [servers.routes."/main"]
   filename = "main.png"
 
+  [servers.routes."/old-page".redirect]
+  to = "/"
+  code = 302
+
 [[servers]]
 server_address = "127.0.0.1"
 ports = [8080]

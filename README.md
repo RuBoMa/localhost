@@ -44,9 +44,9 @@
   - [✓] Send file contents with proper headers.
   - [✓] Test with static assets.
 
-- [ ] **handle http methods**
-  - [ ] Implement handling for `GET`, `POST`, and `DELETE` methods in `core/request.rs` and `server/server.rs`.
-  - [ ] Validate method support and respond with appropriate status codes for unsupported methods.
+- [✓] **handle http methods**
+  - [✓] Implement handling for `GET`, `POST`, and `DELETE` methods in `core/request.rs` and `server/server.rs`.
+  - [✓] Validate method support and respond with appropriate status codes for unsupported methods.
 
 - [ ] **Handle CGI Scripts**
   - [ ] Implement CGI script execution in `handler/cgi.rs`.
