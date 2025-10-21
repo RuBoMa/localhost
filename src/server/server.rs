@@ -1,15 +1,19 @@
-use std::net::{TcpListener, SocketAddr};
-use std::io::{self, ErrorKind};
-use std::{thread, time::Duration};
 use std::collections::HashMap;
+use std::io::{self, ErrorKind};
+use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
+use std::time::Instant;
+use std::{thread, time::Duration};
 
-use crate::Config;
 use crate::config::ServerConfig;
-use crate::ClientConnection;
-use crate::core::{Response, Request};
+use crate::core::{Request, Response};
 use crate::server::default_html::{DEFAULT_404_PAGE, DEFAULT_WELCOME_PAGE};
 use crate::server::handler::serve_static_file;
+use crate::ClientConnection;
+use crate::Config;
+
+use libc::{kevent, kevent64_s, kqueue, EVFILT_READ, EV_ADD, EV_DELETE, EV_ENABLE};
+use std::os::fd::AsRawFd;
 
 #[derive(Debug)]
 pub struct ServerSocket {
@@ -20,10 +24,7 @@ pub struct ServerSocket {
 
 impl ServerSocket {
     /// Create a new non-blocking socket bound to the address and associate it with config.
-     pub fn try_bind(
-        addr: SocketAddr,
-        configs: Vec<ServerConfig>,
-    ) -> io::Result<Self> {
+    pub fn try_bind(addr: SocketAddr, configs: Vec<ServerConfig>) -> io::Result<Self> {
         let listener = TcpListener::bind(addr)?;
         listener.set_nonblocking(true)?;
         println!("[+] Bound to {}", addr);
@@ -51,8 +52,7 @@ impl ServerSocket {
     }
 
     pub fn timeout(&self, server_name: Option<&str>) -> Duration {
-        Duration::from_secs(self.resolve_config(server_name)
-            .client_timeout_secs)
+        Duration::from_secs(self.resolve_config(server_name).client_timeout_secs)
     }
 
     /// Accepts all pending connections (non-blocking), returns new clients.
@@ -62,11 +62,11 @@ impl ServerSocket {
         loop {
             match self.listener.accept() {
                 Ok((stream, peer_addr)) => {
-                    println!("[*] Accepted connection from {} on {}", peer_addr, self.addr);
-                    match ClientConnection::new(
-                        stream,
-                        peer_addr
-                    ) {
+                    println!(
+                        "[*] Accepted connection from {} on {}",
+                        peer_addr, self.addr
+                    );
+                    match ClientConnection::new(stream, peer_addr) {
                         Ok(client) => new_clients.push(client),
                         Err(e) => eprintln!("[!] Failed to create client connection: {}", e),
                     }
@@ -99,9 +99,7 @@ impl Server {
                 let addr_str = format!("{}:{}", server.server_address, port);
                 match addr_str.parse::<SocketAddr>() {
                     Ok(addr) => {
-                        grouped.entry(addr)
-                            .or_default()
-                            .push(server.clone());
+                        grouped.entry(addr).or_default().push(server.clone());
                     }
                     Err(e) => {
                         eprintln!("[!] Invalid address '{}': {}", addr_str, e);
@@ -120,7 +118,10 @@ impl Server {
         }
 
         if sockets.is_empty() {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "No sockets bound"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "No sockets bound",
+            ));
         }
 
         Ok(Server {
@@ -130,6 +131,7 @@ impl Server {
     }
 
     fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
+        let start = Instant::now();
         
         // Step 1: Get the socket the client connected to (by local_addr)
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
@@ -150,26 +152,39 @@ impl Server {
 
         // Step 3: Show default welcome page only if root directory doesn't exist
         if !root_dir.exists() {
+            let elapsed = start.elapsed();
+            println!("[TIMING] {} - Welcome page: {}ms", request.uri, elapsed.as_millis());
             return Response::new(200, "OK")
                 .header("Content-Type", "text/html")
                 .with_body(DEFAULT_WELCOME_PAGE);
         }
 
         // Step 4: Route matching
-        if let Some(route_cfg) = config.routes.get(&request.uri) {
+        let response = if let Some(route_cfg) = config.routes.get(&request.uri) {
             let full_path = root_dir.join(&route_cfg.filename);
-
+            let file_start = Instant::now();
+            
             // Use your static file handler
-            serve_static_file(&full_path)
+            let resp = serve_static_file(&full_path);
+            let file_elapsed = file_start.elapsed();
+            println!("[TIMING] {} - File serve: {}ms", request.uri, file_elapsed.as_millis());
+            resp
         } else {
             // Route not defined in config, but root exists
+            println!("[TIMING] {} - 404 Not Found", request.uri);
             Response::new(404, "Not Found")
                 .header("Content-Type", "text/html")
                 .with_body(DEFAULT_404_PAGE)
-        }
+        };
+        
+        let total_elapsed = start.elapsed();
+        println!("[TIMING] {} - Total request time: {}ms", request.uri, total_elapsed.as_millis());
+        response
     }
 
     fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
+        let client_start = Instant::now();
+        
         match client.read_into_buffer() {
             Ok(n) => {
                 if n == 0 {
@@ -180,10 +195,22 @@ impl Server {
                 client.refresh_activity();
 
                 if let Some(request) = client.parse_request() {
-                    println!("--- Parsed Request from {} ---\n{:#?}", client.peer_addr, request);
+                    let parse_time = client_start.elapsed();
+                    println!("[TIMING] Parse: {}ms for {}", parse_time.as_millis(), request.uri);
+                    
+                    println!(
+                        "--- Parsed Request from {} ---\n{:#?}",
+                        client.peer_addr, request
+                    );
 
+                    let response_start = Instant::now();
                     let response = self.handle_request(&request, &client);
+                    let response_time = response_start.elapsed();
+                    println!("[TIMING] Response generation: {}ms", response_time.as_millis());
+                    
                     client.send_response(response)?; // Clean + readable
+                    let total_time = client_start.elapsed();
+                    println!("[TIMING] Total client handling: {}ms", total_time.as_millis());
 
                     // TODO: inspect request headers to decide keep-alive or close
                 }
@@ -197,38 +224,139 @@ impl Server {
         }
     }
 
-    pub fn poll(&mut self) {
-        for socket in &self.sockets {
-            let new_clients = socket.try_accept();
-            self.clients.extend(new_clients);
+    pub fn run(&mut self) {
+        // Create kqueue
+        let kqueue = unsafe { kqueue() };
+        if kqueue == -1 {
+            panic!("Failed to create kqueue");
         }
 
-        let mut i = 0;
-        while i < self.clients.len() {
-            let mut client = self.clients.swap_remove(i);
-
-            let keep = match self.handle_client(&mut client) {
-                Ok(keep) => keep,
-                Err(e) => {
-                    eprintln!("[!] Client error: {}", e);
-                    false
-                }
+        // Register listening sockets
+        for socket in &self.sockets {
+            let fd = socket.listener.as_raw_fd();
+            let mut event = kevent64_s {
+                ident: fd as u64,           // WHAT to monitor (the socket fd)
+                filter: EVFILT_READ,        // WHAT KIND of event (read events)
+                flags: EV_ADD | EV_ENABLE,  // WHAT ACTION to take (register for read)
+                fflags: 0,                  // no filter-specific flags (none needed for EVFILT_READ)
+                data: 0,                    // no filter-specific data (none needed for EVFILT_READ)
+                udata: 0,                   // USER data (not used here)
+                ext: [0, 0],                // EXTENDED data (not used)
             };
 
-            if keep {
-                self.clients.push(client);
-            }
-
-            if keep {
-                i += 1;
+            unsafe {
+                kevent(
+                    kqueue,
+                    &mut event as *mut _ as *const _,
+                    1,
+                    std::ptr::null_mut(),
+                    0,
+                    std::ptr::null(),
+                );
             }
         }
-    }
-    
-    pub fn run(&mut self) {
+
+        // Prepare event buffer
+        let mut events = vec![
+            kevent64_s {
+                ident: 0,
+                filter: 0,
+                flags: 0,
+                fflags: 0,
+                data: 0,
+                udata: 0,
+                ext: [0, 0],
+            };
+            1024
+        ];
+
         loop {
-            self.poll();
-            thread::sleep(Duration::from_millis(50));
+            // Wait for events
+            let nev = unsafe {
+                kevent(
+                    kqueue,
+                    std::ptr::null(),
+                    0,
+                    events.as_mut_ptr() as *mut _,
+                    events.len() as i32,
+                    std::ptr::null(),
+                )
+            };
+
+            if nev < 0 {
+                eprintln!("[!] kqueue wait failed");
+                continue;
+            }
+
+            // Handle triggered events
+            for i in 0..nev as usize {
+                let ev = &events[i];
+                let fd = ev.ident as i32;
+
+                // Is it a listening socket?
+                if let Some(socket) = self.sockets.iter().find(|s| s.listener.as_raw_fd() == fd) {
+                    let new_clients = socket.try_accept();
+                    for client in new_clients {
+                        let cfd = client.stream.as_raw_fd();
+
+                        // Register client socket for READ
+                        let mut client_ev = kevent64_s {
+                            ident: cfd as u64,
+                            filter: EVFILT_READ,
+                            flags: EV_ADD | EV_ENABLE,
+                            fflags: 0,
+                            data: 0,
+                            udata: 0,
+                            ext: [0, 0],
+                        };
+
+                        unsafe {
+                            kevent(
+                                kqueue,
+                                &mut client_ev as *mut _ as *const _,
+                                1,
+                                std::ptr::null_mut(),
+                                0,
+                                std::ptr::null(),
+                            );
+                        }
+
+                        self.clients.push(client);
+                    }
+                } else {
+                    // Existing client
+                    if let Some(pos) = self.clients.iter().position(|c| c.stream.as_raw_fd() == fd)
+                    {
+                        let mut client = self.clients.swap_remove(pos);
+                        let keep = self.handle_client(&mut client).unwrap_or(false);
+
+                        if keep {
+                            self.clients.push(client);
+                        } else {
+                            // Deregister closed client
+                            let mut ev_del = kevent64_s {
+                                ident: fd as u64,
+                                filter: EVFILT_READ,
+                                flags: EV_DELETE,
+                                fflags: 0,
+                                data: 0,
+                                udata: 0,
+                                ext: [0, 0],
+                            };
+                            unsafe {
+                                kevent(
+                                    kqueue,
+                                    &mut ev_del as *mut _ as *const _,
+                                    1,
+                                    std::ptr::null_mut(),
+                                    0,
+                                    std::ptr::null(),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
