@@ -78,7 +78,7 @@ fn parse_chunked_body(data: &[u8]) -> Option<(Vec<u8>, usize)> {
         i += size_end + 2;
         
         if size == 0 {
-            if data.len() < i + 2 || &data[i..i + 2] != b"\r\n" {
+            if i + 2 > data.len() || &data[i..i + 2] != b"\r\n" {
                 return None; // malformed trailing CRLF
             }
             i += 2; // consume trailing CRLF

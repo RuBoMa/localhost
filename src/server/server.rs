@@ -157,17 +157,14 @@ impl Server {
 
         // Step 4: Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
-            // ✅ Step 4.1: Check if method is allowed
-            if let Some(allowed_methods) = &route_cfg.methods {
-                if !allowed_methods.iter().any(|m| m.eq_ignore_ascii_case(&request.method)) {
-                    let allow_header = allowed_methods.join(", ");
-                    return default_method_not_allowed_response(Some(&allow_header));
-                }
-            }
-
-            // ✅ Step 4.2: Handle redirect if defined
+            // ✅ Step 4.1: Handle redirect if defined
             if let Some(redirect) = &route_cfg.redirect {
                 return Response::redirect(redirect.to.clone(), redirect.code);
+            }
+
+            // ✅ Step 4.2: Check if method is allowed
+            if let Err(allowed) = route_cfg.check_method(&request.method) {
+                return default_method_not_allowed_response(Some(&allowed));
             }
 
             // ✅ Step 4.3: Serve static file if filename is defined

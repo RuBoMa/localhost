@@ -20,7 +20,7 @@ pub struct ServerConfig {
     pub root: String,
     
     #[serde(default)]
-    pub routes: HashMap<String, FileRouteConfig>,
+    pub routes: HashMap<String, RouteConfig>,
 }
 
 fn default_timeout_secs() -> u64 {
@@ -82,14 +82,39 @@ impl Config {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct FileRouteConfig {
-    pub filename: Option<String>,
-    pub methods: Option<Vec<String>>,
+pub struct RouteConfig {
+    #[serde(default)]
+    pub filename: Option<String>, // for single file
 
     #[serde(default)]
-    pub redirect: Option<RedirectConfig>,
+    pub directory: Option<String>, // for directory mapping
+
+    #[serde(default)]
+    pub directory_listing: bool, // default to false
+
+    #[serde(default)]
+    pub methods: Option<Vec<String>>, // allowed methods
+
+    #[serde(default)]
+    pub redirect: Option<RedirectConfig>, // optional redirect
 }
 
+impl RouteConfig {
+    pub fn is_method_allowed(&self, method: &str) -> bool {
+        match &self.methods {
+            Some(allowed) => allowed.iter().any(|m| m.eq_ignore_ascii_case(method)),
+            None => true, // If not specified, allow all
+        }
+    }
+    pub fn check_method(&self, method: &str) -> Result<(), String> {
+        if let Some(allowed) = &self.methods {
+            if !allowed.iter().any(|m| m.eq_ignore_ascii_case(method)) {
+                return Err(allowed.join(", "));
+            }
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RedirectConfig {
