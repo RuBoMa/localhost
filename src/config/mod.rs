@@ -21,6 +21,10 @@ pub struct ServerConfig {
     
     #[serde(default)]
     pub routes: HashMap<String, FileRouteConfig>,
+
+    /// Map file extensions to CGI interpreter/command
+    #[serde(default)]
+    pub cgi_handlers: HashMap<String, String>,
 }
 
 fn default_timeout_secs() -> u64 {

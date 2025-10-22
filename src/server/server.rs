@@ -9,7 +9,7 @@ use crate::config::ServerConfig;
 use crate::ClientConnection;
 use crate::core::{Response, Request};
 use crate::server::default_html::{DEFAULT_404_PAGE, DEFAULT_WELCOME_PAGE};
-use crate::server::handler::serve_static_file;
+use crate::server::handler::{execute_handler};
 
 #[derive(Debug)]
 pub struct ServerSocket {
@@ -20,7 +20,7 @@ pub struct ServerSocket {
 
 impl ServerSocket {
     /// Create a new non-blocking socket bound to the address and associate it with config.
-     pub fn try_bind(
+    pub fn try_bind(
         addr: SocketAddr,
         configs: Vec<ServerConfig>,
     ) -> io::Result<Self> {
@@ -158,9 +158,7 @@ impl Server {
         // Step 4: Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
             let full_path = root_dir.join(&route_cfg.filename);
-
-            // Use your static file handler
-            serve_static_file(&full_path)
+            execute_handler(&full_path, request, config)
         } else {
             // Route not defined in config, but root exists
             Response::new(404, "Not Found")

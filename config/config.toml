@@ -11,6 +11,14 @@ root = "routes"
   [servers.routes."/main"]
   filename = "main.png"
 
+  [servers.routes."/hello"]
+  filename = "hello.py"
+
+  # Map extensions to CGI interpreter/command
+  # Presumably should use python3 instead of python if running on mac
+  [servers.cgi_handlers]
+  ".py" = "python"
+
 [[servers]]
 server_address = "127.0.0.1"
 ports = [8080]
