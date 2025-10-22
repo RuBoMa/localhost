@@ -8,7 +8,11 @@ use crate::Config;
 use crate::config::ServerConfig;
 use crate::ClientConnection;
 use crate::core::{Response, Request};
-use crate::server::default_html::{DEFAULT_404_PAGE, DEFAULT_WELCOME_PAGE};
+use crate::server::default_html::{
+    default_404_response,
+    default_welcome_response,
+    default_method_not_allowed_response
+};
 use crate::server::handler::serve_static_file;
 
 #[derive(Debug)]
@@ -145,27 +149,42 @@ impl Server {
         // Step 2: Extract server_name from the Host header
         let host_header = request.headers.get("Host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
-
         let root_dir = Path::new(&config.root);
 
         // Step 3: Show default welcome page only if root directory doesn't exist
         if !root_dir.exists() {
-            return Response::new(200, "OK")
-                .header("Content-Type", "text/html")
-                .with_body(DEFAULT_WELCOME_PAGE);
+            return default_welcome_response()
         }
 
         // Step 4: Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
-            let full_path = root_dir.join(&route_cfg.filename);
+            // ✅ Step 4.1: Check if method is allowed
+            if let Some(allowed_methods) = &route_cfg.methods {
+                if !allowed_methods.iter().any(|m| m.eq_ignore_ascii_case(&request.method)) {
+                    let allow_header = allowed_methods.join(", ");
+                    return default_method_not_allowed_response(Some(&allow_header));
+                }
+            }
 
-            // Use your static file handler
-            serve_static_file(&full_path)
+            // ✅ Step 4.2: Handle redirect if defined
+            if let Some(redirect) = &route_cfg.redirect {
+                return Response::redirect(redirect.to.clone(), redirect.code);
+            }
+
+            // ✅ Step 4.3: Serve static file if filename is defined
+            if let Some(filename) = &route_cfg.filename {
+                let full_path = root_dir.join(filename);
+                return serve_static_file(&full_path);
+            }
+
+            // ✅ Step 4.4: Misconfigured route (no redirect or filename)
+            return Response::new(500, "Internal Server Error")
+                .header("Content-Type", "text/html")
+                .with_body("<h1>500 Internal Server Error</h1><p>Route is misconfigured (no redirect or file).</p>");
+    
         } else {
             // Route not defined in config, but root exists
-            Response::new(404, "Not Found")
-                .header("Content-Type", "text/html")
-                .with_body(DEFAULT_404_PAGE)
+            default_404_response()
         }
     }
 
@@ -177,15 +196,11 @@ impl Server {
                     return Ok(false);
                 }
 
-                client.refresh_activity();
-
-                if let Some(request) = client.parse_request() {
-                    println!("--- Parsed Request from {} ---\n{:#?}", client.peer_addr, request);
-
-                    let response = self.handle_request(&request, &client);
-                    client.send_response(response)?; // Clean + readable
-
-                    // TODO: inspect request headers to decide keep-alive or close
+                if let Some((request, consumed)) = client.parse_request() {
+                    println!("Request received: {:#?} from {}", request, client.peer_addr);
+                    let response = self.handle_request(&request, client);
+                    client.send_response(response)?;
+                    client.buffer.drain(..consumed);
                 }
 
                 Ok(true)

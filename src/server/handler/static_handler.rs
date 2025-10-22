@@ -1,5 +1,5 @@
 use crate::core::Response;
-use crate::server::default_html::{DEFAULT_404_PAGE};
+use crate::server::default_html::{default_404_response};
 use std::fs;
 use std::path::Path;
 
@@ -12,9 +12,7 @@ pub fn serve_static_file(path: &Path) -> Response {
                 .header("Content-Type", mime)
                 .with_body(contents)
         }
-        Err(_) => Response::new(404, "Not Found")
-            .header("Content-Type", "text/html")
-            .with_body(DEFAULT_404_PAGE),
+        Err(_) => default_404_response(),
     }
 }
 

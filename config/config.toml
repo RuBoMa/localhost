@@ -7,9 +7,14 @@ root = "routes"
 
   [servers.routes."/"]
   filename = "index.html"
+  methods = ["post", "get"]
 
   [servers.routes."/main"]
   filename = "main.png"
+
+  [servers.routes."/old-page".redirect]
+  to = "/"
+  code = 302
 
 [[servers]]
 server_address = "127.0.0.1"
