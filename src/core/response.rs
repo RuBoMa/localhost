@@ -54,4 +54,32 @@ impl Response {
         bytes.extend_from_slice(&self.body);
         bytes
     }
+    
+    pub fn redirect(location: String, status_code: u16) -> Self {
+        let reason_phrase = match status_code {
+            301 => "Moved Permanently",
+            302 => "Found",
+            303 => "See Other",
+            307 => "Temporary Redirect",
+            308 => "Permanent Redirect",
+            _ => "Redirect",
+        }
+        .to_string();
+
+        let mut headers = HashMap::new();
+        headers.insert("Location".to_string(), location.clone());
+        headers.insert("Content-Type".to_string(), "text/html".to_string());
+
+        let body = format!(
+            "<html><body><h1>{} Redirect</h1><p>Redirecting to <a href=\"{}\">{}</a></p></body></html>",
+            status_code, location, location
+        );
+
+        Self {
+            status_code,
+            reason_phrase,
+            headers,
+            body: body.into_bytes(),
+        }
+    }
 }
