@@ -1,5 +1,5 @@
-use std::net::{TcpStream, SocketAddr};
-use std::io::{Read, Write, ErrorKind, Result};
+use std::io::{ErrorKind, Read, Result, Write};
+use std::net::{SocketAddr, TcpStream};
 use std::time::Instant;
 
 use crate::core::{Request, Response};
@@ -46,10 +46,13 @@ impl ClientConnection {
     pub fn parse_request(&self) -> Option<(Request, usize)> {
         Request::parse(&self.buffer)
     }
-    
+
     pub fn send_response(&mut self, response: Response) -> Result<()> {
         let bytes = response.to_bytes();
-        println!("--- Raw HTTP Response ---\n{}", String::from_utf8_lossy(&bytes));
+        println!(
+            "--- Raw HTTP Response ---\n{}",
+            String::from_utf8_lossy(&bytes)
+        );
         self.stream.write_all(&bytes)?;
         self.stream.flush()?;
         Ok(())
