@@ -153,7 +153,6 @@ impl Server {
         if !root_dir.exists() {
             return Response::new(200, "OK")
                 .header("Content-Type", "text/html")
-                .header("Connection", "close")
                 .with_body(DEFAULT_WELCOME_PAGE);
         }
 
@@ -187,18 +186,22 @@ impl Server {
                     let response = self.handle_request(&request, &client);
 
                     client.send_response(response)?;
-
-                    // Important: flush before shutdown to ensure all data is written
                     client.stream.flush()?;
 
-                    // Then close the stream
-                    client.stream.shutdown(std::net::Shutdown::Both)?;
+                    // Check if client wants to close
+                    let close_connection = request
+                        .headers
+                        .get("Connection")
+                        .map(|v| v.eq_ignore_ascii_case("close"))
+                        .unwrap_or(false);
 
-                    // Stop handling this client — done
-                    return Ok(false);
+                    if close_connection {
+                        client.stream.shutdown(std::net::Shutdown::Both)?;
+                        return Ok(false); // stop handling
+                    }
                 }
-
-                Ok(true)
+                // keep connection open for persistent HTTP/1.1
+                return Ok(true);
             }
             Err(e) => {
                 eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
