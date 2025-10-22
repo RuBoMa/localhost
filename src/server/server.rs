@@ -1,9 +1,9 @@
 use std::collections::HashMap;
+use std::io::Write;
 use std::io::{self, ErrorKind};
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
 use std::{thread, time::Duration};
-use std::io::Write;
 
 use crate::config::ServerConfig;
 use crate::core::{Request, Response};
@@ -138,6 +138,7 @@ impl Server {
                 eprintln!("[!] No socket found for local addr {}", client.local_addr);
                 return Response::new(500, "Internal Server Error")
                     .header("Content-Type", "text/html")
+                    .header("Connection", "close")
                     .with_body("<h1>500 Internal Server Error</h1><p>Socket not found.</p>");
             }
         };
@@ -152,6 +153,7 @@ impl Server {
         if !root_dir.exists() {
             return Response::new(200, "OK")
                 .header("Content-Type", "text/html")
+                .header("Connection", "close")
                 .with_body(DEFAULT_WELCOME_PAGE);
         }
 
@@ -160,52 +162,51 @@ impl Server {
             let full_path = root_dir.join(&route_cfg.filename);
             // Use your static file handler
             let resp = serve_static_file(&full_path);
-            resp
+            resp.header("Connection", "close")
         } else {
             // Route not defined in config, but root exists
             println!("[TIMING] {} - 404 Not Found", request.uri);
             Response::new(404, "Not Found")
                 .header("Content-Type", "text/html")
+                .header("Connection", "close")
                 .with_body(DEFAULT_404_PAGE)
         };
         response
     }
 
     fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
-    match client.read_into_buffer() {
-        Ok(0) => {
-            println!("[*] Client {} closed the connection", client.peer_addr);
-            return Ok(false);
-        }
-        Ok(_) => {
-            client.refresh_activity();
-
-            if let Some(request) = client.parse_request() {
-                let response = self.handle_request(&request, &client)
-                    .header("Connection", "close");
-
-                client.send_response(response)?;
-
-                // Important: flush before shutdown to ensure all data is written
-                client.stream.flush()?;
-
-                // Then close the stream
-                client.stream.shutdown(std::net::Shutdown::Both)?;
-
-                // Stop handling this client — done
-                return Ok(false);
+        match client.read_into_buffer() {
+            Ok(0) => {
+                println!("[*] Client {} closed the connection", client.peer_addr);
+                return Ok(false); // Tcp will close on drop
             }
+            Ok(_) => {
+                client.refresh_activity();
 
-            Ok(true)
-        }
-        Err(e) => {
-            eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
-            let _ = client.stream.shutdown(std::net::Shutdown::Both);
-            Ok(false)
+                if let Some(request) = client.parse_request() {
+                    let response = self.handle_request(&request, &client);
+
+                    client.send_response(response)?;
+
+                    // Important: flush before shutdown to ensure all data is written
+                    client.stream.flush()?;
+
+                    // Then close the stream
+                    client.stream.shutdown(std::net::Shutdown::Both)?;
+
+                    // Stop handling this client — done
+                    return Ok(false);
+                }
+
+                Ok(true)
+            }
+            Err(e) => {
+                eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
+                let _ = client.stream.shutdown(std::net::Shutdown::Both);
+                Ok(false)
+            }
         }
     }
-}
-
 
     pub fn run(&mut self) {
         // Create kqueue
