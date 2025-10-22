@@ -231,7 +231,7 @@ impl Server {
                 ext: [0, 0],               // EXTENDED data (not used)
             };
 
-            unsafe {
+            let result = unsafe {
                 kevent(
                     kqueue,
                     &mut event as *mut _ as *const _,
@@ -239,9 +239,16 @@ impl Server {
                     std::ptr::null_mut(),
                     0,
                     std::ptr::null(),
-                );
+                )
+                };
+                 if result == -1 {
+                    panic!(
+                        "[!] Failed to register socket {} with kqueue: {}",
+                        fd,
+                        std::io::Error::last_os_error()
+                    );
+                }
             }
-        }
 
         // Prepare event buffer
         let mut events = vec![
