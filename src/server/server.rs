@@ -6,14 +6,12 @@ use std::path::Path;
 use std::{thread, time::Duration};
 
 use crate::config::ServerConfig;
-use crate::ClientConnection;
-use crate::core::{Response, Request};
+use crate::core::{Request, Response};
 use crate::server::default_html::{
-    default_404_response,
-    default_welcome_response,
-    default_method_not_allowed_response
+    default_404_response, default_method_not_allowed_response, default_welcome_response,
 };
 use crate::server::handler::serve_static_file;
+use crate::ClientConnection;
 use crate::Config;
 
 use libc::{kevent, kevent64_s, kqueue, EVFILT_READ, EV_ADD, EV_DELETE, EV_ENABLE};
@@ -135,6 +133,11 @@ impl Server {
     }
 
     fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
+        // Handle POST /upload specially
+        if request.method.eq_ignore_ascii_case("POST") && request.uri == "/upload" {
+            return Self::handle_upload(request);
+        }
+
         // Step 1: Get the socket the client connected to (by local_addr)
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
             Some(sock) => sock,
@@ -154,14 +157,17 @@ impl Server {
 
         // Step 3: Show default welcome page only if root directory doesn't exist
         if !root_dir.exists() {
-            return default_welcome_response()
+            return default_welcome_response();
         }
 
         // Step 4: Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
             // ✅ Step 4.1: Check if method is allowed
             if let Some(allowed_methods) = &route_cfg.methods {
-                if !allowed_methods.iter().any(|m| m.eq_ignore_ascii_case(&request.method)) {
+                if !allowed_methods
+                    .iter()
+                    .any(|m| m.eq_ignore_ascii_case(&request.method))
+                {
                     let allow_header = allowed_methods.join(", ");
                     return default_method_not_allowed_response(Some(&allow_header));
                 }
@@ -170,6 +176,12 @@ impl Server {
             // ✅ Step 4.2: Handle redirect if defined
             if let Some(redirect) = &route_cfg.redirect {
                 return Response::redirect(redirect.to.clone(), redirect.code);
+            }
+
+            if request.method.eq_ignore_ascii_case("POST") {
+                if request.uri == "/upload" {
+                    return Self::handle_upload(request);
+                }
             }
 
             // ✅ Step 4.3: Serve static file if filename is defined
@@ -182,7 +194,6 @@ impl Server {
             return Response::new(500, "Internal Server Error")
                 .header("Content-Type", "text/html")
                 .with_body("<h1>500 Internal Server Error</h1><p>Route is misconfigured (no redirect or file).</p>");
-    
         } else {
             // Route not defined in config, but root exists
             default_404_response()
@@ -225,6 +236,59 @@ impl Server {
         }
     }
 
+    fn handle_upload(request: &Request) -> Response {
+        let content_type = match request.headers.get("Content-Type") {
+            Some(ct) if ct.starts_with("multipart/form-data") => ct,
+            _ => {
+                return Response::new(400, "Bad Request").with_body("Expected multipart/form-data")
+            }
+        };
+
+        // extract boundary from content_type
+        let boundary = match content_type.split("boundary=").nth(1) {
+            Some(b) => b.trim(),
+            None => {
+                return Response::new(400, "Bad Request")
+                    .with_body("Missing boundary in Content-Type");
+            }
+        };
+        // Convert body to string for parsing
+        let body_str = match std::str::from_utf8(&request.body) {
+            Ok(s) => s,
+            Err(_) => {
+                return Response::new(400, "Bad Request").with_body("Request body not valid UTF-8");
+            }
+        };
+        // Split body by boundary
+        let parts: Vec<&str> = body_str.split(&format!("--{}", boundary)).collect();
+        
+        // Create uploads directory if it doesn't exist
+        if std::fs::create_dir_all("uploads").is_err() {
+            return Response::new(500, "Internal Server Error")
+                .with_body("Could not create upload directory");
+        }
+        // Process each part
+        for part in parts {
+            if part.contains("Content-Disposition") {
+                if let Some(filename_start) = part.find("filename=\"") {
+                    let filename_end = part[filename_start + 10..].find('"').unwrap_or(0);
+                    let filename = &part[filename_start + 10..filename_start + 10 + filename_end];
+
+                    if let Some(content_start) = part.find("\r\n\r\n") {
+                        let content = &part[content_start + 4..];
+                        let content = content.trim_end_matches("\r\n");
+
+                        let path = format!("uploads/{}", filename);
+                        if let Err(e) = std::fs::write(&path, content) {
+                            eprintln!("Failed to save {}: {}", filename, e);
+                        }
+                    }
+                }
+            }
+        }
+        Response::new(200, "OK").with_body("File uploaded successfully\n")
+    }
+
     pub fn run(&mut self) {
         // Create kqueue
         let kqueue = unsafe { kqueue() };
@@ -254,15 +318,15 @@ impl Server {
                     0,
                     std::ptr::null(),
                 )
-                };
-                 if result == -1 {
-                    panic!(
-                        "[!] Failed to register socket {} with kqueue: {}",
-                        fd,
-                        std::io::Error::last_os_error()
-                    );
-                }
+            };
+            if result == -1 {
+                panic!(
+                    "[!] Failed to register socket {} with kqueue: {}",
+                    fd,
+                    std::io::Error::last_os_error()
+                );
             }
+        }
 
         // Prepare event buffer
         let mut events = vec![
