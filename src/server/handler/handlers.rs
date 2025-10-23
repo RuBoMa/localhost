@@ -13,10 +13,10 @@ use super::utils::{
 };
 
 /// Determines whether to serve a static file or invoke CGI for the given path, then execute the handler
-pub fn execute_handler(path: &Path, request: &Request, config: &ServerConfig) -> Response {
+pub fn execute_handler(path: &Path, request: &Request, config: &ServerConfig, local_port: u16) -> Response {
     // If the file extension matches any of the config.cgi_handlers keys, use cgi handling
     if resolve_cgi_interpreter(path, config).is_some() {
-        serve_cgi_file(path, request, config)
+        serve_cgi_file(path, request, config, local_port)
     } else {
         serve_static_file(path)
     }
@@ -37,8 +37,7 @@ pub fn serve_static_file(path: &Path) -> Response {
     }
 }
 
-pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig) -> Response {
-    // Resolve interpreter from config or shebang
+pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, local_port: u16) -> Response {
     let interpreter = resolve_cgi_interpreter(path, config);
     let interpreter = match interpreter {
         Some(cmd) => cmd,
@@ -72,8 +71,10 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig) -> 
     // Pipe stdin/stdout
     cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
 
-    // Environment variables per CGI/1.1
-    set_cgi_env(&mut cmd, &abs_path, request, config);
+    // Environment variables per CGI/1.1 (with strict Host/port validation)
+    if let Err(resp) = set_cgi_env(&mut cmd, &abs_path, request, config, local_port) {
+        return resp;
+    }
 
     let mut child = match cmd.spawn() {
         Ok(c) => c,

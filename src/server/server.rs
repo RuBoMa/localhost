@@ -158,7 +158,7 @@ impl Server {
         // Step 4: Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
             let full_path = root_dir.join(&route_cfg.filename);
-            execute_handler(&full_path, request, config)
+            execute_handler(&full_path, request, config, client.local_addr.port())
         } else {
             // Route not defined in config, but root exists
             Response::new(404, "Not Found")

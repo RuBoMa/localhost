@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::process::Command;
-use crate::core::Request;
+use crate::core::{Request, Response};
 use crate::config::ServerConfig;
 
 /// Very basic MIME type guessing based on file extension.
@@ -42,7 +42,13 @@ pub fn resolve_cgi_interpreter(path: &Path, config: &ServerConfig) -> Option<Str
         .find_map(|ext| config.cgi_handlers.get(&ext).cloned())
 }
 
-pub fn set_cgi_env(cmd: &mut Command, script_path: &Path, request: &Request, config: &ServerConfig) {
+pub fn set_cgi_env(
+    cmd: &mut Command,
+    script_path: &Path,
+    request: &Request,
+    config: &ServerConfig,
+    local_port: u16,
+) -> Result<(), Response> {
     let (uri_path, query) = split_uri(&request.uri);
 
     cmd.env("GATEWAY_INTERFACE", "CGI/1.1");
@@ -52,11 +58,12 @@ pub fn set_cgi_env(cmd: &mut Command, script_path: &Path, request: &Request, con
     cmd.env("SCRIPT_NAME", uri_path);
     cmd.env("SCRIPT_FILENAME", script_path.as_os_str());
 
-    // TODO: Currently using first server name and port as a placeholder, need to fix this later
-    let server_name = config.server_name.as_deref().unwrap_or("localhost");
-    let server_port = config.ports.first().cloned().unwrap_or(0);
-    cmd.env("SERVER_NAME", server_name);
-    cmd.env("SERVER_PORT", server_port.to_string());
+    // Validate Host/name/port and use the validated values
+    let (server_name, host_port) = check_name_and_port(request, config, local_port)?;
+
+    // Set validated server name and port
+    cmd.env("SERVER_NAME", &server_name);
+    cmd.env("SERVER_PORT", host_port.to_string());
     cmd.env("DOCUMENT_ROOT", &config.root);
 
     if let Some(ct) = request.headers.get("Content-Type") {
@@ -79,6 +86,7 @@ pub fn set_cgi_env(cmd: &mut Command, script_path: &Path, request: &Request, con
         }
         cmd.env(up, v);
     }
+    Ok(())
 }
 
 pub fn split_uri(uri: &str) -> (&str, &str) {
@@ -134,6 +142,70 @@ pub fn parse_cgi_output(output: &[u8]) -> (u16, String, Vec<(String, String)>, V
 /// Find pattern in buffer
 pub fn find_sequence(buffer: &[u8], pattern: &[u8]) -> Option<usize> {
     buffer.windows(pattern.len()).position(|w| w == pattern)
+}
+
+pub fn check_name_and_port(
+    request: &Request,
+    config: &ServerConfig,
+    local_port: u16,
+) -> Result<(String, u16), Response> {
+    // Check that host header exists
+    let host = match request.headers.get("Host") {
+        Some(h) if !h.trim().is_empty() => h.trim(),
+        _ => {
+            return Err(
+                Response::new(400, "Bad Request")
+                    .header("Content-Type", "text/plain; charset=utf-8")
+                    .with_body("Missing Host header"),
+            );
+        }
+    };
+
+    // Parse server name and port from host header
+    let (server_name, host_port) = match host.rsplit_once(':') {
+        Some((name, port_str)) if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) => {
+            let p = match port_str.parse::<u16>() {
+                Ok(v) => v,
+                Err(_) => {
+                    return Err(
+                        Response::new(400, "Bad Request")
+                            .header("Content-Type", "text/plain; charset=utf-8")
+                            .with_body("Invalid Host port"),
+                    );
+                }
+            };
+            (name, p)
+        }
+        _ => {
+            return Err(
+                Response::new(400, "Bad Request")
+                    .header("Content-Type", "text/plain; charset=utf-8")
+                    .with_body("Host must include explicit port"),
+            );
+        }
+    };
+
+    // Enforce server name if configured
+    if let Some(cfg_name) = &config.server_name {
+        if !server_name.eq_ignore_ascii_case(cfg_name) {
+            return Err(
+                Response::new(400, "Bad Request")
+                    .header("Content-Type", "text/plain; charset=utf-8")
+                    .with_body("Host name does not match server config"),
+            );
+        }
+    }
+
+    // Enforce port matches socket's local port
+    if host_port != local_port {
+        return Err(
+            Response::new(400, "Bad Request")
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .with_body("Host port does not match listening port"),
+        );
+    }
+
+    Ok((server_name.to_string(), host_port))
 }
 
 pub fn default_reason_phrase(code: u16) -> &'static str {
