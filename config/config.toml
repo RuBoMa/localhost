@@ -7,15 +7,21 @@ server_name = "localhost"
 root = "routes"
 
   [servers.routes."/"]
-  filename = "index.html"
+  filename = "home.html"
   methods = ["post", "get"]
-
-  [servers.routes."/main"]
-  filename = "main.png"
 
   [servers.routes."/old-page".redirect]
   to = "/"
   code = 302
+  
+  [servers.routes."/static"]
+  directory = "static"
+  directory_listing = true
+  methods = ["get", "post", "delete"]
+
+  [servers.routes."/root"]
+  directory = ""
+  methods = ["get", "post", "delete"]
 
 [[servers]]
 server_address = "127.0.0.1"

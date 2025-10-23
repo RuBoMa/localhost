@@ -56,6 +56,15 @@ impl Config {
                             full_path.display()
                         );
                     }
+                }  else if let Some(directory) = &cfg.directory {
+                    let full_path = std::path::Path::new(&server.root).join(directory);
+                    if !full_path.exists() || !full_path.is_dir() {
+                        eprintln!(
+                            "Warning: route '{}' points to missing or invalid directory: {}",
+                            route,
+                            full_path.display()
+                        );
+                    }
                 } else if cfg.redirect.is_none() {
                     return Err(format!(
                         "Route '{}' must define either a filename or a redirect",
@@ -100,12 +109,6 @@ pub struct RouteConfig {
 }
 
 impl RouteConfig {
-    pub fn is_method_allowed(&self, method: &str) -> bool {
-        match &self.methods {
-            Some(allowed) => allowed.iter().any(|m| m.eq_ignore_ascii_case(method)),
-            None => true, // If not specified, allow all
-        }
-    }
     pub fn check_method(&self, method: &str) -> Result<(), String> {
         if let Some(allowed) = &self.methods {
             if !allowed.iter().any(|m| m.eq_ignore_ascii_case(method)) {

@@ -6,15 +6,19 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::Config;
-use crate::config::ServerConfig;
+use crate::config::{ServerConfig, RouteConfig};
 use crate::ClientConnection;
 use crate::core::{Response, Request};
 use crate::server::default_html::{
+    default_403_response,
     default_404_response,
-    default_welcome_response,
-    default_method_not_allowed_response
+    default_405_response,
+    default_500_response,
+    default_welcome_response
 };
+use crate::server::match_route;
 use crate::server::handler::serve_static_file;
+use crate::server::handler::generate_directory_listing;
 
 #[derive(Debug)]
 pub struct ServerSocket {
@@ -132,6 +136,48 @@ impl Server {
         })
     }
 
+    pub fn handle_directory_request(
+        &self,
+        root_dir: &Path,
+        route_cfg: &RouteConfig,
+        request_subpath: &str,
+        route_prefix: &str,
+    ) -> Response {
+        // Full target path is base_path + request_subpath
+        let target_path = root_dir.join(request_subpath.trim_start_matches('/'));
+       
+        let Ok(target_path) = target_path.canonicalize() else {
+            return default_404_response();
+        };
+        let Ok(root_dir) = root_dir.canonicalize() else {
+            return default_500_response(Some("Invalid root directory"));
+        };
+        if !target_path.starts_with(&root_dir) {
+            return default_403_response();
+        }
+
+        if target_path.is_file() {
+            return serve_static_file(&target_path);
+        }
+
+        if target_path.is_dir() {
+            if route_cfg.directory_listing {
+                return generate_directory_listing(&target_path, route_prefix);
+            }
+
+            if let Some(file) = route_cfg.filename.clone() {
+                return serve_static_file(&target_path.join(file));
+            }
+
+            if target_path.join("index.html").exists() {
+                return serve_static_file(&target_path.join("index.html"));
+            }
+            return default_403_response();
+        }
+
+        default_404_response()
+    }
+
     fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
         
         // Step 1: Get the socket the client connected to (by local_addr)
@@ -139,9 +185,7 @@ impl Server {
             Some(sock) => sock,
             None => {
                 eprintln!("[!] No socket found for local addr {}", client.local_addr);
-                return Response::new(500, "Internal Server Error")
-                    .header("Content-Type", "text/html")
-                    .with_body("<h1>500 Internal Server Error</h1><p>Socket not found.</p>");
+                return default_500_response(Some("Socket not found."));
             }
         };
 
@@ -156,32 +200,40 @@ impl Server {
         }
 
         // Step 4: Route matching
-        if let Some(route_cfg) = config.routes.get(&request.uri) {
+
+        if let Some((route_prefix, route_cfg)) = match_route(&config.routes, &request.uri) {
             // ✅ Step 4.1: Handle redirect if defined
             if let Some(redirect) = &route_cfg.redirect {
                 return Response::redirect(redirect.to.clone(), redirect.code);
             }
 
             // ✅ Step 4.2: Check if method is allowed
-            if let Err(allowed) = route_cfg.check_method(&request.method) {
-                return default_method_not_allowed_response(Some(&allowed));
+            if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
+                return default_405_response(Some(&allowed_methods));
             }
 
-            // ✅ Step 4.3: Serve static file if filename is defined
+            // ✅ Step 4.3: Serve directory
+            if let Some(dir) = &route_cfg.directory {
+                let base_dir = root_dir.join(dir);
+                let sub_path = &request.uri[route_prefix.len()..];
+                let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
+                let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
+    
+                return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix);
+            }
+
+            // ✅ Step 4.4: Serve static file if filename is defined
             if let Some(filename) = &route_cfg.filename {
                 let full_path = root_dir.join(filename);
                 return serve_static_file(&full_path);
             }
 
-            // ✅ Step 4.4: Misconfigured route (no redirect or filename)
-            return Response::new(500, "Internal Server Error")
-                .header("Content-Type", "text/html")
-                .with_body("<h1>500 Internal Server Error</h1><p>Route is misconfigured (no redirect or file).</p>");
-    
-        } else {
-            // Route not defined in config, but root exists
-            default_404_response()
+            // ✅ Step 4.5: Misconfigured route (no redirect or filename)
+            return default_500_response(Some("Route is misconfigured (no redirect or file)."));
         }
+        
+        // Route not defined in config, but root exists\
+        default_404_response()
     }
 
     fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
