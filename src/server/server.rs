@@ -270,6 +270,7 @@ impl Server {
             if !trimmed
                 .windows(b"Content-Disposition".len())
                 .any(|w| w == b"Content-Disposition")
+                    
             {
                 println!("Ignoring non-file part");
                 continue;
@@ -279,7 +280,7 @@ impl Server {
                 if let Some(content_start) = find_subslice(part, b"\r\n\r\n") {
                     let content = &part[content_start + 4..]; // exact bytes
                                                               // Stop before trailing CRLF if it exists at the end of this part
-                    let content_len = content.len().saturating_sub(2).min(content.len()); // don't underflow
+                    let content_len = content.len().saturating_sub(2); // don't underflow
                     let content = &content[..content_len];
 
                     let path = format!("uploads/{}", filename);
