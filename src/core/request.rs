@@ -10,13 +10,17 @@ pub struct Request {
 }
 
 impl Request {
-        pub fn parse(raw: &[u8]) -> Option<(Self, usize)> {
-        let request = std::str::from_utf8(raw).ok()?;
-        let header_end = request.find("\r\n\r\n")?;
+    pub fn parse(raw: &[u8]) -> Option<(Self, usize)> {
+        // 1. Find header/body separator
+        let header_end = raw.windows(4).position(|w| w == b"\r\n\r\n")?;
 
-        let (header_part, body_part) = raw.split_at(header_end + 4);
-        let header_str = std::str::from_utf8(&header_part[..header_end]).ok()?;
+        // 2. Convert header part to UTF-8
+        let header_str = std::str::from_utf8(&raw[..header_end]).ok()?;
 
+        // 3. Body as raw bytes
+        let body_part = &raw[header_end + 4..];
+
+        // 4. Parse request line and headers
         let mut lines = header_str.lines();
         let request_line = lines.next()?;
         let mut parts = request_line.split_whitespace();
@@ -31,7 +35,11 @@ impl Request {
             }
         }
 
-        let (body, consumed_body_len) = parse_body(&headers, body_part);
+        // 5. Parse body according to Content-Length / chunked
+        let (body, consumed_body_len) = match parse_body(&headers, body_part) {
+            Some((b, len)) => (b, len),
+            None => return None, // Body incomplete; wait for more bytes
+        };
         let consumed = header_end + 4 + consumed_body_len;
 
         Some((
@@ -47,21 +55,27 @@ impl Request {
     }
 }
 
-fn parse_body(headers: &HashMap<String, String>, raw_body: &[u8]) -> (Vec<u8>, usize) {
+fn parse_body(headers: &HashMap<String, String>, raw_body: &[u8]) -> Option<(Vec<u8>, usize)> {
+    // Handle chunked encoding
     if let Some(encoding) = headers.get("Transfer-Encoding") {
         if encoding.eq_ignore_ascii_case("chunked") {
-            return parse_chunked_body(raw_body).unwrap_or_default();
+            return parse_chunked_body(raw_body);
         }
     }
 
-    // Fallback: Use Content-Length if available
+    // Use Content-Length if available
     if let Some(len_str) = headers.get("Content-Length") {
         if let Ok(len) = len_str.parse::<usize>() {
-            let take_len = len.min(raw_body.len());
-            return (raw_body[..take_len].to_vec(), take_len);
+            if raw_body.len() < len {
+                // Body incomplete, wait for more bytes
+                return None;
+            }
+            return Some((raw_body[..len].to_vec(), len));
         }
     }
-    (Vec::new(), 0)
+
+    // No Content-Length or chunked encoding: assume empty body
+    Some((Vec::new(), 0))
 }
 
 fn parse_chunked_body(data: &[u8]) -> Option<(Vec<u8>, usize)> {
@@ -69,16 +83,14 @@ fn parse_chunked_body(data: &[u8]) -> Option<(Vec<u8>, usize)> {
     let mut result = Vec::new();
 
     while i < data.len() {
-        let size_end = data[i..]
-            .windows(2)
-            .position(|w| w == b"\r\n")?;
+        let size_end = data[i..].windows(2).position(|w| w == b"\r\n")?;
         let size_line = std::str::from_utf8(&data[i..i + size_end]).ok()?;
         let size = usize::from_str_radix(size_line.trim(), 16).ok()?;
 
         i += size_end + 2;
-        
+
         if size == 0 {
-            if data.len() < i + 2 || &data[i..i + 2] != b"\r\n" {
+            if i + 2 <= data.len() && &data[i..i + 2] != b"\r\n" {
                 return None; // malformed trailing CRLF
             }
             i += 2; // consume trailing CRLF

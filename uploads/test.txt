@@ -1,1 +1,1269 @@
 Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Hello, This is a test file
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?
+Here’s a simple curl command to upload `test.txt` from your current directory to your server’s `/upload` endpoint:
+
+```bash
+curl -v -F "file=@test.txt" http://localhost:8080/upload
+```
+
+### 🔹 Explanation
+
+* `-v` → verbose, shows headers and connection info
+* `-F "file=@test.txt"` → tells curl to send a multipart/form-data POST with `test.txt` as the file
+* `http://localhost:8080/upload` → your server endpoint
+
+---
+
+If you run it and the server is using the updated **binary-safe handler**, you should see:
+
+```
+[*] Accepted connection from 127.0.0.1:xxxxx on 127.0.0.1:8080
+POST /upload
+Saved file: test.txt
+HTTP/1.1 200 OK
+File uploaded successfully
+[*] Client 127.0.0.1:xxxxx closed the connection
+```
+
+And the file will appear in your `uploads/` folder.
+
+Do you want me to also give a **one-liner command that works for both `.txt` and `.png`**?

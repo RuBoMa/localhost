@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::io::Write;
 use std::io::{self, ErrorKind};
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
@@ -135,10 +134,11 @@ impl Server {
     fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
         // Handle POST /upload specially
         if request.method.eq_ignore_ascii_case("POST") && request.uri == "/upload" {
+            eprintln!("POST {}", request.uri);
             return Self::handle_upload(request);
         }
 
-        // Step 1: Get the socket the client connected to (by local_addr)
+        // Get the socket the client connected to (by local_addr)
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
             Some(sock) => sock,
             None => {
@@ -150,7 +150,7 @@ impl Server {
             }
         };
 
-        // Step 2: Extract server_name from the Host header
+        // Extract server_name from the Host header
         let host_header = request.headers.get("Host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
         let root_dir = Path::new(&config.root);
@@ -160,9 +160,9 @@ impl Server {
             return default_welcome_response();
         }
 
-        // Step 4: Route matching
+        // Route matching
         if let Some(route_cfg) = config.routes.get(&request.uri) {
-            // ✅ Step 4.1: Check if method is allowed
+            // Step 4.1: Check if method is allowed
             if let Some(allowed_methods) = &route_cfg.methods {
                 if !allowed_methods
                     .iter()
@@ -173,7 +173,7 @@ impl Server {
                 }
             }
 
-            // ✅ Step 4.2: Handle redirect if defined
+            // Handle redirect if defined
             if let Some(redirect) = &route_cfg.redirect {
                 return Response::redirect(redirect.to.clone(), redirect.code);
             }
@@ -184,13 +184,13 @@ impl Server {
                 }
             }
 
-            // ✅ Step 4.3: Serve static file if filename is defined
+            // Serve static file if filename is defined
             if let Some(filename) = &route_cfg.filename {
                 let full_path = root_dir.join(filename);
                 return serve_static_file(&full_path);
             }
 
-            // ✅ Step 4.4: Misconfigured route (no redirect or filename)
+            // Misconfigured route (no redirect or filename)
             return Response::new(500, "Internal Server Error")
                 .header("Content-Type", "text/html")
                 .with_body("<h1>500 Internal Server Error</h1><p>Route is misconfigured (no redirect or file).</p>");
@@ -237,55 +237,67 @@ impl Server {
     }
 
     fn handle_upload(request: &Request) -> Response {
-        let content_type = match request.headers.get("Content-Type") {
-            Some(ct) if ct.starts_with("multipart/form-data") => ct,
-            _ => {
-                return Response::new(400, "Bad Request").with_body("Expected multipart/form-data")
+        let boundary = match extract_boundary(request) {
+            Some(b) => b,
+            None => {
+                return Response::new(400, "Bad Request")
+                    .with_body("Missing boundary in Content-Type")
             }
         };
 
-        // extract boundary from content_type
-        let boundary = match content_type.split("boundary=").nth(1) {
-            Some(b) => b.trim(),
-            None => {
-                return Response::new(400, "Bad Request")
-                    .with_body("Missing boundary in Content-Type");
-            }
-        };
-        // Convert body to string for parsing
-        let body_str = match std::str::from_utf8(&request.body) {
-            Ok(s) => s,
-            Err(_) => {
-                return Response::new(400, "Bad Request").with_body("Request body not valid UTF-8");
-            }
-        };
-        // Split body by boundary
-        let parts: Vec<&str> = body_str.split(&format!("--{}", boundary)).collect();
-        
         // Create uploads directory if it doesn't exist
-        if std::fs::create_dir_all("uploads").is_err() {
+        if let Err(e) = std::fs::create_dir_all("uploads") {
+            eprintln!("Failed to create upload dir: {}", e);
             return Response::new(500, "Internal Server Error")
                 .with_body("Could not create upload directory");
         }
+
+        // Prepare boundary bytes
+        let boundary_bytes = format!("--{}", boundary);
+        let boundary_bytes = boundary_bytes.as_bytes();
+
+        let mut start = 0;
+        let mut segments = Vec::new();
+        while let Some(pos) = find_subslice(&request.body[start..], boundary_bytes) {
+            let part = &request.body[start..start + pos];
+            if !part.is_empty() {
+                segments.push(part);
+            }
+            start += pos + boundary_bytes.len();
+        }
+        if start < request.body.len() {
+            segments.push(&request.body[start..]);
+        }
+
         // Process each part
-        for part in parts {
-            if part.contains("Content-Disposition") {
-                if let Some(filename_start) = part.find("filename=\"") {
-                    let filename_end = part[filename_start + 10..].find('"').unwrap_or(0);
-                    let filename = &part[filename_start + 10..filename_start + 10 + filename_end];
+        for part in segments {
+            let trimmed = part.strip_prefix(b"\r\n").unwrap_or(part);
 
-                    if let Some(content_start) = part.find("\r\n\r\n") {
-                        let content = &part[content_start + 4..];
-                        let content = content.trim_end_matches("\r\n");
+            if !trimmed
+                .windows(b"Content-Disposition".len())
+                .any(|w| w == b"Content-Disposition")
+            {
+                println!("Ignoring non-file part");
+                continue;
+            }
 
-                        let path = format!("uploads/{}", filename);
-                        if let Err(e) = std::fs::write(&path, content) {
-                            eprintln!("Failed to save {}: {}", filename, e);
-                        }
+            if let Some(filename) = extract_filename(part) {
+                if let Some(content_start) = find_subslice(part, b"\r\n\r\n") {
+                    let content = &part[content_start + 4..]; // exact bytes
+                                                              // Stop before trailing CRLF if it exists at the end of this part
+                    let content_len = content.len().saturating_sub(2).min(content.len()); // don't underflow
+                    let content = &content[..content_len];
+
+                    let path = format!("uploads/{}", filename);
+                    if let Err(e) = std::fs::write(&path, content) {
+                        eprintln!("Failed to save {}: {}", filename, e);
+                    } else {
+                        eprintln!("Saved file: {}", filename);
                     }
                 }
             }
         }
+
         Response::new(200, "OK").with_body("File uploaded successfully\n")
     }
 
@@ -431,4 +443,35 @@ impl Server {
             }
         }
     }
+}
+
+// Find the position of a subslice within another
+fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
+}
+
+// Extract filename="..." from Content-Disposition header
+fn extract_filename(part: &[u8]) -> Option<String> {
+    let part_str = String::from_utf8_lossy(part);
+    if let Some(start) = part_str.find("filename=\"") {
+        let rest = &part_str[start + 10..];
+        if let Some(end) = rest.find('"') {
+            return Some(rest[..end].to_string());
+        }
+    }
+    None
+}
+
+fn extract_boundary(request: &Request) -> Option<String> {
+    let content_type = request.headers.get("Content-Type")?;
+    if !content_type.starts_with("multipart/form-data") {
+        return None;
+    }
+
+    content_type
+        .split("boundary=")
+        .nth(1)
+        .map(|b| b.trim().to_string())
 }
