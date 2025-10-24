@@ -178,12 +178,6 @@ impl Server {
                 return Response::redirect(redirect.to.clone(), redirect.code);
             }
 
-            if request.method.eq_ignore_ascii_case("POST") {
-                if request.uri == "/upload" {
-                    return Self::handle_upload(request);
-                }
-            }
-
             // Serve static file if filename is defined
             if let Some(filename) = &route_cfg.filename {
                 let full_path = root_dir.join(filename);

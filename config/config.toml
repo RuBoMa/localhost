@@ -4,7 +4,6 @@ ports = [8080, 8081]
 server_name = "localhost"
 client_timeout_secs = 120
 root = "routes"
-upload_directory = "uploads"
 
   [servers.routes."/"]
   filename = "index.html"
