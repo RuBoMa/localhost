@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
+use crate::core::{extract_boundary, parse_multipart, MultipartPart};
+
 #[derive(Debug)]
 pub struct Request {
     pub method: String,
     pub uri: String,
-    pub version: String,
+    pub _version: String,
     pub headers: HashMap<String, String>,
     pub body: Vec<u8>,
 }
@@ -46,12 +48,23 @@ impl Request {
             Request {
                 method,
                 uri,
-                version,
+                _version: version,
                 headers,
                 body,
             },
             consumed,
         ))
+    }
+    
+    pub fn is_multipart(&self) -> bool {
+        self.headers
+            .get("Content-Type")
+            .map_or(false, |ct| ct.starts_with("multipart/form-data"))
+    }
+
+    pub fn multipart_parts(&self) -> Option<Vec<MultipartPart>> {
+        let boundary = extract_boundary(self)?;
+        Some(parse_multipart(&self.body, &boundary))
     }
 }
 

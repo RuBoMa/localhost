@@ -42,11 +42,20 @@ impl Config {
                 return Err(format!("Root directory '{}' does not exist", server.root));
             }
 
-            for (route, cfg) in &server.routes {            
+            for (route, cfg) in &server.routes {
                 if !route.starts_with("/") {
                     eprintln!("Warning: route '{}' should start with '/'", route);
                 }
 
+                // Route is valid if it has a filename, a redirect, or an upload directory
+                if cfg.filename.is_none() && cfg.redirect.is_none() && cfg.upload_dir.is_none() {
+                    return Err(format!(
+                        "Route '{}' must define either a filename, a redirect, or an upload directory",
+                        route
+                    ));
+                }
+
+                // If filename is set, check that the file exists
                 if let Some(filename) = &cfg.filename {
                     let full_path = std::path::Path::new(&server.root).join(filename);
                     if !full_path.exists() {
@@ -56,11 +65,18 @@ impl Config {
                             full_path.display()
                         );
                     }
-                } else if cfg.redirect.is_none() {
-                    return Err(format!(
-                        "Route '{}' must define either a filename or a redirect",
-                        route
-                    ));
+                }
+
+                // If upload_dir is set, check that it is a directory (create later if needed)
+                if let Some(upload_dir) = &cfg.upload_dir {
+                    let path = std::path::Path::new(upload_dir);
+                    if path.exists() && !path.is_dir() {
+                        return Err(format!(
+                            "Route '{}' defines an upload directory that exists but is not a directory: {}",
+                            route,
+                            path.display()
+                        ));
+                    }
                 }
             }
         }
@@ -88,6 +104,9 @@ pub struct FileRouteConfig {
 
     #[serde(default)]
     pub redirect: Option<RedirectConfig>,
+    
+    #[serde(default)]
+    pub upload_dir: Option<String>,
 }
 
 
