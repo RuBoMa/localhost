@@ -42,13 +42,27 @@ impl Config {
                 return Err(format!("Root directory '{}' does not exist", server.root));
             }
 
-            for (route, cfg) in &server.routes {            
+            
+            for (route, cfg) in &server.routes {
                 if !route.starts_with("/") {
                     eprintln!("Warning: route '{}' should start with '/'", route);
                 }
 
+                // A valid route must define at least one of these
+                if cfg.filename.is_none()
+                    && cfg.directory.is_none()
+                    && cfg.redirect.is_none()
+                    && cfg.upload_dir.is_none()
+                {
+                    return Err(format!(
+                        "Route '{}' must define at least one of: filename, directory, redirect, or upload_dir",
+                        route
+                    ));
+                }
+
+                // Check file existence
                 if let Some(filename) = &cfg.filename {
-                    let full_path = std::path::Path::new(&server.root).join(filename);
+                    let full_path = Path::new(&server.root).join(filename);
                     if !full_path.exists() {
                         eprintln!(
                             "Warning: route '{}' points to missing file: {}",
@@ -56,8 +70,11 @@ impl Config {
                             full_path.display()
                         );
                     }
-                }  else if let Some(directory) = &cfg.directory {
-                    let full_path = std::path::Path::new(&server.root).join(directory);
+                }
+
+                // Check directory existence
+                if let Some(directory) = &cfg.directory {
+                    let full_path = Path::new(&server.root).join(directory);
                     if !full_path.exists() || !full_path.is_dir() {
                         eprintln!(
                             "Warning: route '{}' points to missing or invalid directory: {}",
@@ -65,11 +82,18 @@ impl Config {
                             full_path.display()
                         );
                     }
-                } else if cfg.redirect.is_none() {
-                    return Err(format!(
-                        "Route '{}' must define either a filename or a redirect",
-                        route
-                    ));
+                }
+
+                // Validate upload dir (we create it later if needed)
+                if let Some(upload_dir) = &cfg.upload_dir {
+                    let path = Path::new(upload_dir);
+                    if path.exists() && !path.is_dir() {
+                        return Err(format!(
+                            "Route '{}' defines an upload_dir that exists but is not a directory: {}",
+                            route,
+                            path.display()
+                        ));
+                    }
                 }
             }
         }
@@ -106,6 +130,9 @@ pub struct RouteConfig {
 
     #[serde(default)]
     pub redirect: Option<RedirectConfig>, // optional redirect
+    
+    #[serde(default)]
+    pub upload_dir: Option<String>,
 }
 
 impl RouteConfig {
@@ -122,6 +149,7 @@ impl RouteConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct RedirectConfig {
     pub to: String,               // Target URL or path
+
     #[serde(default = "default_redirect_code")]
     pub code: u16,                // e.g., 301 or 302
 }

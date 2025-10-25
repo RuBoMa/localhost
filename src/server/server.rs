@@ -1,9 +1,8 @@
-use std::net::{TcpListener, SocketAddr};
-use std::io::{self, ErrorKind};
-use std::{thread, time::Duration};
 use std::collections::HashMap;
-use std::path::Path;
-use std::time::Instant;
+use std::path::{Path, PathBuf};
+use std::net::SocketAddr;
+use std::io;
+use std::time::Duration;
 
 use crate::Config;
 use crate::config::{ServerConfig, RouteConfig};
@@ -14,84 +13,19 @@ use crate::server::default_html::{
     default_404_response,
     default_405_response,
     default_500_response,
-    default_welcome_response
+    default_welcome_response,
 };
 use crate::server::match_route;
-use crate::server::handler::serve_static_file;
-use crate::server::handler::generate_directory_listing;
+use crate::server::handler::{serve_static_file, generate_directory_listing};
+use crate::server::ServerSocket;
+use crate::server::run_loop;
 
-#[derive(Debug)]
-pub struct ServerSocket {
-    pub addr: SocketAddr,
-    pub listener: TcpListener,
-    pub configs: Vec<ServerConfig>,
-}
-
-impl ServerSocket {
-    /// Create a new non-blocking socket bound to the address and associate it with config.
-     pub fn try_bind(
-        addr: SocketAddr,
-        configs: Vec<ServerConfig>,
-    ) -> io::Result<Self> {
-        let listener = TcpListener::bind(addr)?;
-        listener.set_nonblocking(true)?;
-        println!("[+] Bound to {}", addr);
-
-        Ok(Self {
-            addr,
-            listener,
-            configs,
-        })
-    }
-
-    pub fn resolve_config(&self, server_name: Option<&str>) -> &ServerConfig {
-        if let Some(name) = server_name {
-            for config in &self.configs {
-                if let Some(cfg_name) = &config.server_name {
-                    if cfg_name == name {
-                        return config;
-                    }
-                }
-            }
-        }
-
-        // Fallback: first server config
-        &self.configs[0]
-    }
-
-    /// Accepts all pending connections (non-blocking), returns new clients.
-    pub fn try_accept(&self) -> Vec<ClientConnection> {
-        let mut new_clients = Vec::new();
-
-        loop {
-            match self.listener.accept() {
-                Ok((stream, peer_addr)) => {
-                    println!("[*] Accepted connection from {} on {}", peer_addr, self.addr);
-                    match ClientConnection::new(
-                        stream,
-                        peer_addr
-                    ) {
-                        Ok(client) => new_clients.push(client),
-                        Err(e) => eprintln!("[!] Failed to create client connection: {}", e),
-                    }
-                }
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => break,
-                Err(e) => {
-                    eprintln!("[!] Error accepting on {}: {}", self.addr, e);
-                    break;
-                }
-            }
-        }
-
-        new_clients
-    }
-}
 
 #[derive(Debug)]
 pub struct Server {
-    sockets: Vec<ServerSocket>,
-    clients: Vec<ClientConnection>,
-    client_timeout: Duration,
+    pub sockets: Vec<ServerSocket>,
+    pub clients: Vec<ClientConnection>,
+    pub client_timeout: Duration,
 }
 
 impl Server {
@@ -104,9 +38,7 @@ impl Server {
                 let addr_str = format!("{}:{}", server.server_address, port);
                 match addr_str.parse::<SocketAddr>() {
                     Ok(addr) => {
-                        grouped.entry(addr)
-                            .or_default()
-                            .push(server.clone());
+                        grouped.entry(addr).or_default().push(server.clone());
                     }
                     Err(e) => {
                         eprintln!("[!] Invalid address '{}': {}", addr_str, e);
@@ -126,7 +58,10 @@ impl Server {
         }
 
         if sockets.is_empty() {
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "No sockets bound"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "No sockets bound",
+            ));
         }
 
         Ok(Server {
@@ -179,8 +114,7 @@ impl Server {
     }
 
     fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
-        
-        // Step 1: Get the socket the client connected to (by local_addr)
+        // Step 1: Identify which socket the client connected to
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
             Some(sock) => sock,
             None => {
@@ -189,119 +123,142 @@ impl Server {
             }
         };
 
-        // Step 2: Extract server_name from the Host header
+        // Step 2: Resolve configuration based on Host header
         let host_header = request.headers.get("Host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
         let root_dir = Path::new(&config.root);
 
-        // Step 3: Show default welcome page only if root directory doesn't exist
         if !root_dir.exists() {
-            return default_welcome_response()
+            return default_welcome_response();
         }
 
-        // Step 4: Route matching
+        // Step 3: Find route match
+        let (route_prefix, route_cfg) = match match_route(&config.routes, &request.uri) {
+            Some(r) => r,
+            None => return default_404_response(),
+        };
 
-        if let Some((route_prefix, route_cfg)) = match_route(&config.routes, &request.uri) {
-            // ✅ Step 4.1: Handle redirect if defined
-            if let Some(redirect) = &route_cfg.redirect {
-                return Response::redirect(redirect.to.clone(), redirect.code);
-            }
+        // Step 4: Redirect
+        if let Some(redirect) = &route_cfg.redirect {
+            return Response::redirect(redirect.to.clone(), redirect.code);
+        }
 
-            // ✅ Step 4.2: Check if method is allowed
-            if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
-                return default_405_response(Some(&allowed_methods));
-            }
-
-            // ✅ Step 4.3: Serve directory
-            if let Some(dir) = &route_cfg.directory {
-                let base_dir = root_dir.join(dir);
-                let sub_path = &request.uri[route_prefix.len()..];
-                let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
-                let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
-    
-                return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix);
-            }
-
-            // ✅ Step 4.4: Serve static file if filename is defined
-            if let Some(filename) = &route_cfg.filename {
-                let full_path = root_dir.join(filename);
-                return serve_static_file(&full_path);
-            }
-
-            // ✅ Step 4.5: Misconfigured route (no redirect or filename)
-            return default_500_response(Some("Route is misconfigured (no redirect or file)."));
+        // Step 5: Enforce allowed methods
+        if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
+            return default_405_response(Some(&allowed_methods));
         }
         
-        // Route not defined in config, but root exists\
-        default_404_response()
+        // Step 6: Upload handling (POST → upload_dir)
+        if let Some(upload_dir) = &route_cfg.upload_dir {
+            if request.method.eq_ignore_ascii_case("POST") {
+                let full_upload_path = root_dir.join(upload_dir);
+                
+                // Create upload directory if missing
+                if let Err(e) = std::fs::create_dir_all(&full_upload_path) {
+                    return default_500_response(Some(&format!(
+                        "Failed to create upload directory: {}",
+                        e
+                    )));
+                }
+
+                return Server::handle_upload(request, &full_upload_path);
+            }
+        }
+        
+        // Step 7: Directory handling (GET/HEAD → directory or listing)
+        if let Some(dir) = &route_cfg.directory {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return default_405_response(Some("GET, HEAD"));
+            }
+            let base_dir = root_dir.join(dir);
+            let sub_path = &request.uri[route_prefix.len()..];
+            let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
+            let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
+
+            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix);
+        }
+
+        // Step 8: Static file handling (GET/HEAD → filename)
+        if let Some(filename) = &route_cfg.filename {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return default_405_response(Some("GET, HEAD"));
+            }
+            let full_path = root_dir.join(filename);
+            return serve_static_file(&full_path);
+        }
+
+        // Step 9: Misconfiguration
+        return default_500_response(Some("Route is misconfigured (no redirect or file)."));
     }
 
-    fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
+    pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
-            Ok(n) => {
-                if n == 0 {
-                    println!("[*] Client {} closed the connection", client.peer_addr);
-                    return Ok(false);
-                }
-
+/*             Ok(0) => {
+                println!("[*] Client {} closed the connection", client.peer_addr);
+                return Ok(false); // Tcp will close on drop
+            } */
+            Ok(_) => {
                 if let Some((request, consumed)) = client.parse_request() {
-                    client.request_at = None;
-                    println!("Request received: {:#?} from {}", request, client.peer_addr);
-                    let response = self.handle_request(&request, client);
+                    let response = self.handle_request(&request, &client);
+
                     client.send_response(response)?;
                     client.buffer.drain(..consumed);
-                }
 
-                Ok(true)
+                    // Check if client wants to close
+                    let close_connection = request
+                        .headers
+                        .get("Connection")
+                        .map(|v| v.eq_ignore_ascii_case("close"))
+                        .unwrap_or(false);
+
+                    if close_connection {
+                        client.stream.shutdown(std::net::Shutdown::Both)?;
+                        return Ok(false); // stop handling
+                    }
+                }
+                // keep connection open for persistent HTTP/1.1
+                return Ok(true);
             }
             Err(e) => {
                 eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
+                let _ = client.stream.shutdown(std::net::Shutdown::Both);
                 Ok(false)
             }
         }
     }
 
-    pub fn poll(&mut self) {
-        let now = Instant::now();
-
-        for socket in &self.sockets {
-            let new_clients = socket.try_accept();
-            self.clients.extend(new_clients);
+    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {    
+        if let Err(e) = std::fs::create_dir_all(upload_directory) {
+            return Response::new(500, "Internal Server Error")
+                .with_body(format!("Could not create upload directory: {}", e));
         }
 
-        let mut i = 0;
-        while i < self.clients.len() {
-            let mut client = self.clients.swap_remove(i);
-    
-            // Check for request timeout before handling the client
-            if client.is_request_timed_out(now, self.client_timeout) {
-                eprintln!("[!] Connection timed out: {}", client.peer_addr);
-                // Do not push client back — drop connection
-                continue;
-            }
+        if !request.is_multipart() {
+            return Response::new(400, "Bad Request")
+                .with_body("Expected multipart/form-data\n");
+        }
 
-            let keep = match self.handle_client(&mut client) {
-                Ok(keep) => keep,
-                Err(e) => {
-                    eprintln!("[!] Client error: {}", e);
-                    false
+        let parts = match request.multipart_parts() {
+            Some(p) => p,
+            None => return Response::new(400, "Bad Request").with_body("Invalid multipart data\n"),
+        };
+
+        for part in parts {
+            if let Some(filename) = &part.filename {
+                // Build full path under upload_directory
+                let full_path = Path::new(upload_directory).join(filename);
+
+                match std::fs::write(&full_path, &part.content) {
+                    Ok(_) => println!("✅ Saved file: {}", full_path.display()),
+                    Err(e) => eprintln!("❌ Failed to save {}: {}", full_path.display(), e),
                 }
-            };
-
-            if keep {
-                self.clients.push(client);
-            }
-
-            if keep {
-                i += 1;
             }
         }
+
+        Response::new(200, "OK").with_body("File uploaded successfully\n")
     }
-    
+ 
     pub fn run(&mut self) {
-        loop {
-            self.poll();
-            thread::sleep(Duration::from_millis(50));
-        }
+        run_loop(self);
     }
 }

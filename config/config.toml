@@ -13,10 +13,11 @@ root = "routes"
   [servers.routes."/old-page".redirect]
   to = "/"
   code = 302
-  
+
   [servers.routes."/static"]
   directory = "static"
   directory_listing = true
+  upload_dir = "static"
   methods = ["get", "post", "delete"]
 
   [servers.routes."/root"]
@@ -25,4 +26,5 @@ root = "routes"
 
 [[servers]]
 server_address = "127.0.0.1"
+server_name = "anotherhost"
 ports = [8080]
