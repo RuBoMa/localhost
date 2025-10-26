@@ -14,6 +14,16 @@ root = "routes"
   [servers.routes."/hello"]
   filename = "hello.py"
 
+  # Custom error pages, placed under "{root}/errors/"
+  [servers.errors."404"]
+  filename = "not_found.html"
+
+  [servers.errors."500"]
+  filename = "server_error.html"
+
+  [servers.errors."405"]
+  filename = "method_not_allowed.html"
+
   # Map extensions to CGI interpreter/command
   # Presumably should use python3 instead of python if running on mac
   [servers.cgi_handlers]

@@ -25,6 +25,10 @@ pub struct ServerConfig {
     /// Map file extensions to CGI interpreter/command
     #[serde(default)]
     pub cgi_handlers: HashMap<String, String>,
+
+    /// HTTP status code -> custom error file
+    #[serde(default)]
+    pub errors: HashMap<String, FileRouteConfig>,
 }
 
 fn default_timeout_secs() -> u64 {
@@ -58,6 +62,26 @@ impl Config {
                         route,
                         full_path.display()
                     );
+                }
+            }
+
+            // Validate custom error files under root/errors
+            if !server.errors.is_empty() {
+                let errors_dir = std::path::Path::new(&server.root).join("errors");
+                for (code, cfg) in &server.errors {
+                    // best-effort code parse to notify users early
+                    if code.parse::<u16>().is_err() {
+                        eprintln!("Warning: error code '{}' is not a valid u16", code);
+                    }
+
+                    let full_path = errors_dir.join(&cfg.filename);
+                    if !full_path.exists() {
+                        eprintln!(
+                            "Warning: custom error {} file not found: {}",
+                            code,
+                            full_path.display()
+                        );
+                    }
                 }
             }
         }

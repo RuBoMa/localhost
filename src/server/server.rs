@@ -8,7 +8,7 @@ use crate::Config;
 use crate::config::ServerConfig;
 use crate::ClientConnection;
 use crate::core::{Response, Request};
-use crate::server::default_html::{DEFAULT_404_PAGE, DEFAULT_WELCOME_PAGE};
+use crate::server::error_response_from_config;
 use crate::server::handler::{execute_handler};
 
 #[derive(Debug)]
@@ -152,7 +152,16 @@ impl Server {
         if !root_dir.exists() {
             return Response::new(200, "OK")
                 .header("Content-Type", "text/html")
-                .with_body(DEFAULT_WELCOME_PAGE);
+                .with_body(r#"
+<!DOCTYPE html>
+<html>
+<head><title>localhost</title></head>
+<body>
+  <h1>Welcome</h1>
+  <p>Your server is running, but no routes or root directory were configured.</p>
+</body>
+</html>
+"#);
         }
 
         // Step 4: Route matching
@@ -161,9 +170,7 @@ impl Server {
             execute_handler(&full_path, request, config, client.local_addr.port())
         } else {
             // Route not defined in config, but root exists
-            Response::new(404, "Not Found")
-                .header("Content-Type", "text/html")
-                .with_body(DEFAULT_404_PAGE)
+            error_response_from_config(404, config)
         }
     }
 

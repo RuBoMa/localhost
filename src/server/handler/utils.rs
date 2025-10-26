@@ -1,11 +1,11 @@
-use std::path::Path;
+﻿use std::path::Path;
 use std::process::Command;
 use crate::core::{Request, Response};
 use crate::config::ServerConfig;
 
 /// Very basic MIME type guessing based on file extension.
 /// Extend as needed for your use case.
-pub fn guess_mime_type(filename: &str) -> &str {
+pub fn guess_mime_type(filename: &str) -> &'static str {
     if let Some(ext) = filename.rsplit('.').next() {
         match ext {
             "html" => "text/html",
