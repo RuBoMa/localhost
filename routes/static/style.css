@@ -1,15 +1,52 @@
+/* Unified directory and server page style */
 body {
-  font-family: "Segoe UI", sans-serif;
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: #fafafa;
   color: #333;
-  margin: 2rem;
+  margin: 2rem auto;
+  max-width: 900px;
+  line-height: 1.5;
 }
 
 h1 {
   color: #0078d4;
+  font-size: 1.6rem;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 0.5rem;
 }
 
-p {
-  font-size: 1.1rem;
-  line-height: 1.5;
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+li {
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s ease;
+}
+
+li:hover {
+  background-color: #f0f0f0;
+}
+
+a {
+  color: #0078d4;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.parent {
+  font-weight: bold;
+}
+
+footer {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: #777;
 }

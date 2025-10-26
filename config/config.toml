@@ -22,8 +22,9 @@ root = "routes"
 
   [servers.routes."/root"]
   directory = ""
+  directory_listing = true
   methods = ["get", "post", "delete"]
-
+  
 [[servers]]
 server_address = "127.0.0.1"
 server_name = "anotherhost"

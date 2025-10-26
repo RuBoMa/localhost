@@ -1,6 +1,6 @@
 use std::io::{ErrorKind, Read, Result, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use crate::core::{Request, Response};
 

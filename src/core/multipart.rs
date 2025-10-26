@@ -10,7 +10,7 @@ pub fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 
 /// Extracts the boundary string from a multipart/form-data Content-Type header
 pub fn extract_boundary(request: &Request) -> Option<String> {
-    let content_type = request.headers.get("Content-Type")?;
+    let content_type = request.headers.get("content-type")?;
     if !content_type.starts_with("multipart/form-data") {
         return None;
     }

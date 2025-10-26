@@ -1,6 +1,5 @@
 use std::net::{SocketAddr, TcpListener};
 use std::io::{self, ErrorKind};
-use std::time::Duration;
 
 use crate::config::ServerConfig;
 use crate::ClientConnection;
@@ -39,10 +38,6 @@ impl ServerSocket {
 
         // Fallback: first server config
         &self.configs[0]
-    }
-
-    pub fn timeout(&self, server_name: Option<&str>) -> Duration {
-        Duration::from_secs(self.resolve_config(server_name).client_timeout_secs)
     }
 
     /// Accepts all pending connections (non-blocking), returns new clients.

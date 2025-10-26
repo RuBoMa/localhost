@@ -19,7 +19,7 @@ impl Request {
         let body_part = &raw[header_end + 4..];
 
         // 2. Parse headers and request line
-        let (method, uri, version, headers) = Self::parse_headers(header_str)?;
+        let (method, uri, version, headers) = parse_headers(header_str)?;
 
         // 3. Parse body according to Content-Length / chunked
         let (body, consumed_body_len) = match parse_body(&headers, body_part) {
@@ -42,7 +42,7 @@ impl Request {
     
     pub fn is_multipart(&self) -> bool {
         self.headers
-            .get("Content-Type")
+            .get("content-type")
             .map_or(false, |ct| ct.starts_with("multipart/form-data"))
     }
 
@@ -74,14 +74,14 @@ fn parse_headers(header_str: &str) -> Option<(String, String, String, HashMap<St
 
 fn parse_body(headers: &HashMap<String, String>, raw_body: &[u8]) -> Option<(Vec<u8>, usize)> {
     // Handle chunked encoding
-    if let Some(encoding) = headers.get("Transfer-Encoding") {
+    if let Some(encoding) = headers.get("transfer-encoding") {
         if encoding.eq_ignore_ascii_case("chunked") {
             return parse_chunked_body(raw_body);
         }
     }
 
     // Use Content-Length if available
-    if let Some(len_str) = headers.get("Content-Length") {
+    if let Some(len_str) = headers.get("content-length") {
         if let Ok(len) = len_str.parse::<usize>() {
             if raw_body.len() < len {
                 // Body incomplete, wait for more bytes

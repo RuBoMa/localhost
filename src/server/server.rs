@@ -9,6 +9,7 @@ use crate::config::{ServerConfig, RouteConfig};
 use crate::ClientConnection;
 use crate::core::{Response, Request};
 use crate::server::default_html::{
+    default_400_response,
     default_403_response,
     default_404_response,
     default_405_response,
@@ -16,7 +17,7 @@ use crate::server::default_html::{
     default_welcome_response,
 };
 use crate::server::match_route;
-use crate::server::handler::{serve_static_file, generate_directory_listing};
+use crate::server::handler::{serve_static_file, generate_directory_listing, resolve_target_path};
 use crate::server::ServerSocket;
 use crate::server::run_loop;
 
@@ -97,7 +98,11 @@ impl Server {
 
         if target_path.is_dir() {
             if route_cfg.directory_listing {
-                return generate_directory_listing(&target_path, route_prefix);
+                return generate_directory_listing(
+                    &target_path,
+                    route_prefix,
+                    route_cfg.upload_dir.is_some()
+                );
             }
 
             if let Some(file) = route_cfg.filename.clone() {
@@ -147,21 +152,20 @@ impl Server {
         if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
             return default_405_response(Some(&allowed_methods));
         }
-        
-        // Step 6: Upload handling (POST → upload_dir)
-        if let Some(upload_dir) = &route_cfg.upload_dir {
-            if request.method.eq_ignore_ascii_case("POST") {
-                let full_upload_path = root_dir.join(upload_dir);
-                
-                // Create upload directory if missing
-                if let Err(e) = std::fs::create_dir_all(&full_upload_path) {
-                    return default_500_response(Some(&format!(
-                        "Failed to create upload directory: {}",
-                        e
-                    )));
-                }
 
-                return Server::handle_upload(request, &full_upload_path);
+        // Step 6: Upload handling (POST → upload_dir)
+        if let Some(upload_dir) = &route_cfg.upload_dir {    
+            let full_target_path = resolve_target_path(
+                &request.uri,
+                &route_prefix,
+                root_dir, &upload_dir);
+
+            if request.method.eq_ignore_ascii_case("POST") {
+                return Server::handle_upload(request, &full_target_path);
+            }
+            
+            if request.method.eq_ignore_ascii_case("DELETE") {
+                return Server::handle_delete(&full_target_path);
             }
         }
         
@@ -193,10 +197,10 @@ impl Server {
 
     pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
-/*             Ok(0) => {
+            Ok(0) => {
                 println!("[*] Client {} closed the connection", client.peer_addr);
                 return Ok(false); // Tcp will close on drop
-            } */
+            }
             Ok(_) => {
                 if let Some((request, consumed)) = client.parse_request() {
                     let response = self.handle_request(&request, &client);
@@ -227,27 +231,35 @@ impl Server {
         }
     }
 
-    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {    
+    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {
         if let Err(e) = std::fs::create_dir_all(upload_directory) {
-            return Response::new(500, "Internal Server Error")
-                .with_body(format!("Could not create upload directory: {}", e));
+            return default_500_response(
+                Some(&format!("Could not create upload directory: {}", e))
+            );
         }
 
         if !request.is_multipart() {
-            return Response::new(400, "Bad Request")
-                .with_body("Expected multipart/form-data\n");
+            return default_400_response();
         }
 
         let parts = match request.multipart_parts() {
             Some(p) => p,
-            None => return Response::new(400, "Bad Request").with_body("Invalid multipart data\n"),
+            None => return default_400_response()
         };
 
         for part in parts {
+
             if let Some(filename) = &part.filename {
                 // Build full path under upload_directory
                 let full_path = Path::new(upload_directory).join(filename);
 
+                if let Some(parent) = full_path.parent() {
+                    if let Err(e) = std::fs::create_dir_all(parent) {
+                        eprintln!("❌ Failed to create directories for {}: {}", full_path.display(), e);
+                        continue;
+                    }
+                }
+                
                 match std::fs::write(&full_path, &part.content) {
                     Ok(_) => println!("✅ Saved file: {}", full_path.display()),
                     Err(e) => eprintln!("❌ Failed to save {}: {}", full_path.display(), e),
@@ -257,7 +269,29 @@ impl Server {
 
         Response::new(200, "OK").with_body("File uploaded successfully\n")
     }
- 
+
+    pub fn handle_delete(target_path: &Path) -> Response {
+        if !target_path.exists() {
+            return default_404_response();
+        }
+
+        let result = if target_path.is_file() {
+            std::fs::remove_file(target_path)
+        } else if target_path.is_dir() {
+            std::fs::remove_dir_all(target_path)
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "Unknown file type"))
+        };
+
+        match result {
+            Ok(_) => Response::new(200, "OK")
+                .with_body(format!("Deleted successfully: {}", target_path.display())),
+            Err(e) => default_500_response(
+                Some(&format!("Failed to delete {}: {}", target_path.display(), e))
+            ),
+        }
+    }
+
     pub fn run(&mut self) {
         run_loop(self);
     }
