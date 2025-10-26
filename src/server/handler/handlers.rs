@@ -1,10 +1,10 @@
-use crate::server::default_html::DEFAULT_404_PAGE;
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use crate::core::{Request, Response};
 use crate::config::ServerConfig;
+use crate::server::default_404_response;
 use super::utils::{
     guess_mime_type,
     resolve_cgi_interpreter,
@@ -31,9 +31,9 @@ pub fn serve_static_file(path: &Path) -> Response {
                 .header("Content-Type", mime)
                 .with_body(contents)
         }
-        Err(_) => Response::new(404, "Not Found")
-            .header("Content-Type", "text/html")
-            .with_body(DEFAULT_404_PAGE),
+        Err(_) => {
+            default_404_response()
+        }
     }
 }
 
@@ -53,9 +53,7 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, loc
     let abs_path = match path.canonicalize() {
         Ok(p) => p,
         Err(_) => {
-            return Response::new(404, "Not Found")
-                .header("Content-Type", "text/html")
-                .with_body(DEFAULT_404_PAGE);
+            return default_404_response();
         }
     };
 
@@ -88,8 +86,15 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, loc
 
     // Send request body to CGI stdin
     if let Some(mut stdin) = child.stdin.take() {
-        // This is currently empty due to handling of the request in request parsing (no body parsing), gotta fix that later
-        let _ = stdin.write_all(&request.body);
+        if let Err(e) = stdin.write_all(&request.body) {
+            let body = format!(
+                "<h1>502 Bad Gateway</h1><p>Failed to write request body to CGI: {}</p>",
+                e
+            );
+            return Response::new(502, "Bad Gateway")
+                .header("Content-Type", "text/html; charset=utf-8")
+                .with_body(body);
+        }
         let _ = stdin.flush();
         drop(stdin);
     }

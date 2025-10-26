@@ -69,11 +69,8 @@ pub fn set_cgi_env(
     if let Some(ct) = request.headers.get("Content-Type") {
         cmd.env("CONTENT_TYPE", ct);
     }
-    if !request.body.is_empty() {
-        cmd.env("CONTENT_LENGTH", request.body.len().to_string());
-    } else if let Some(cl) = request.headers.get("Content-Length") {
-        cmd.env("CONTENT_LENGTH", cl);
-    }
+    // Always reflect the parsed body length for CGI
+    cmd.env("CONTENT_LENGTH", request.body.len().to_string());
 
     for (k, v) in &request.headers {
         let mut up = String::with_capacity(k.len() + 5);

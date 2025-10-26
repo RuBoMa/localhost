@@ -7,12 +7,17 @@ root = "routes"
 
   [servers.routes."/"]
   filename = "index.html"
+  methods = ["post", "get"]
 
   [servers.routes."/main"]
   filename = "main.png"
 
   [servers.routes."/hello"]
   filename = "hello.py"
+
+  [servers.routes."/old-page".redirect]
+  to = "/"
+  code = 302
 
   # Map extensions to CGI interpreter/command
   # Presumably should use python3 instead of python if running on mac
@@ -21,4 +26,5 @@ root = "routes"
 
 [[servers]]
 server_address = "127.0.0.1"
+server_name = "anotherhost"
 ports = [8080]

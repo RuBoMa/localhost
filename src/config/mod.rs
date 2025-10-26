@@ -50,14 +50,21 @@ impl Config {
                 if !route.starts_with("/") {
                     eprintln!("Warning: route '{}' should start with '/'", route);
                 }
-                
-                let full_path = std::path::Path::new(&server.root).join(&cfg.filename);
-                if !full_path.exists() {
-                    eprintln!(
-                        "Warning: route '{}' points to missing file: {}",
-                        route,
-                        full_path.display()
-                    );
+
+                if let Some(filename) = &cfg.filename {
+                    let full_path = std::path::Path::new(&server.root).join(filename);
+                    if !full_path.exists() {
+                        eprintln!(
+                            "Warning: route '{}' points to missing file: {}",
+                            route,
+                            full_path.display()
+                        );
+                    }
+                } else if cfg.redirect.is_none() {
+                    return Err(format!(
+                        "Route '{}' must define either a filename or a redirect",
+                        route
+                    ));
                 }
             }
         }
@@ -80,5 +87,21 @@ impl Config {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct FileRouteConfig {
-    pub filename: String, // Relative to the server's root
+    pub filename: Option<String>,
+    pub methods: Option<Vec<String>>,
+
+    #[serde(default)]
+    pub redirect: Option<RedirectConfig>,
+}
+
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct RedirectConfig {
+    pub to: String,               // Target URL or path
+    #[serde(default = "default_redirect_code")]
+    pub code: u16,                // e.g., 301 or 302
+}
+
+fn default_redirect_code() -> u16 {
+    302 // Default to 302 Found
 }

@@ -1,5 +1,5 @@
-use std::net::{TcpStream, SocketAddr};
-use std::io::{Read, Write, ErrorKind, Result};
+use std::io::{ErrorKind, Read, Result, Write};
+use std::net::{SocketAddr, TcpStream};
 use std::time::Instant;
 
 use crate::core::{Request, Response};
@@ -14,7 +14,7 @@ pub struct ClientConnection {
 }
 
 impl ClientConnection {
-    pub fn new(mut stream: TcpStream, peer_addr: SocketAddr) -> std::io::Result<Self> {
+    pub fn new(stream: TcpStream, peer_addr: SocketAddr) -> std::io::Result<Self> {
         let local_addr = stream.local_addr()?;
 
         stream.set_nonblocking(true)?;
@@ -42,23 +42,17 @@ impl ClientConnection {
             Err(e) => Err(e),
         }
     }
-
-    pub fn raw_request(&self) -> Option<&str> {
-        std::str::from_utf8(&self.buffer).ok()
-    }
     
-    pub fn parse_request(&self) -> Option<Request> {
-        self.raw_request()
-            .and_then(|raw| Request::parse(&raw))
+    pub fn parse_request(&self) -> Option<(Request, usize)> {
+        Request::parse(&self.buffer)
     }
 
-    pub fn refresh_activity(&mut self) {
-        self.last_active = Instant::now();
-    }
-    
     pub fn send_response(&mut self, response: Response) -> Result<()> {
         let bytes = response.to_bytes();
-        println!("--- Raw HTTP Response ---\n{}", String::from_utf8_lossy(&bytes));
+        println!(
+            "--- Raw HTTP Response ---\n{}",
+            String::from_utf8_lossy(&bytes)
+        );
         self.stream.write_all(&bytes)?;
         self.stream.flush()?;
         Ok(())
