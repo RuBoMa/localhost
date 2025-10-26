@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::net::SocketAddr;
 use std::io;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 
 use crate::config::ServerConfig;
 use crate::core::{Request, Response};
@@ -9,11 +9,10 @@ use crate::server::default_html::{
     default_404_response, default_method_not_allowed_response, default_welcome_response,
 };
 use crate::server::handler::serve_static_file;
+use crate::server::run_loop;
 use crate::server::ServerSocket;
 use crate::ClientConnection;
 use crate::Config;
-use crate::server::run_loop;
-
 
 #[derive(Debug)]
 pub struct Server {
@@ -102,7 +101,7 @@ impl Server {
             if let Some(redirect) = &route_cfg.redirect {
                 return Response::redirect(redirect.to.clone(), redirect.code);
             }
-            
+
             // Handle POST /upload specially
             if let Some(upload_dir) = &route_cfg.upload_dir {
                 let full_upload_path = root_dir.join(upload_dir);
@@ -129,7 +128,7 @@ impl Server {
 
     pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
-/*             Ok(0) => {
+            /*             Ok(0) => {
                 println!("[*] Client {} closed the connection", client.peer_addr);
                 return Ok(false); // Tcp will close on drop
             } */
@@ -163,15 +162,18 @@ impl Server {
         }
     }
 
-    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {    
+    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {
+        // Min and max upload size limits (in bytes)
+        const MIN_UPLOAD_SIZE: usize = 1; // 1 byte minimum
+        const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024; // 10 MB maximum
+
         if let Err(e) = std::fs::create_dir_all(upload_directory) {
             return Response::new(500, "Internal Server Error")
                 .with_body(format!("Could not create upload directory: {}", e));
         }
 
         if !request.is_multipart() {
-            return Response::new(400, "Bad Request")
-                .with_body("Expected multipart/form-data\n");
+            return Response::new(400, "Bad Request").with_body("Expected multipart/form-data\n");
         }
 
         let parts = match request.multipart_parts() {
@@ -181,19 +183,33 @@ impl Server {
 
         for part in parts {
             if let Some(filename) = &part.filename {
+                // Check individual file size
+                let file_size = part.content.len();
+
+                if file_size < MIN_UPLOAD_SIZE {
+                    return Response::new(400, "Bad Request")
+                        .with_body("Upload too small (minimum 1 byte)\n");
+                }
+                if file_size > MAX_UPLOAD_SIZE {
+                    return Response::new(413, "Payload Too Large").with_body(format!(
+                        "File '{}' exceeds maximum size of {} bytes (got {} bytes)\n",
+                        filename, MAX_UPLOAD_SIZE, file_size
+                    ));
+                }
+
                 // Build full path under upload_directory
                 let full_path = Path::new(upload_directory).join(filename);
 
                 match std::fs::write(&full_path, &part.content) {
-                    Ok(_) => println!("✅ Saved file: {}", full_path.display()),
-                    Err(e) => eprintln!("❌ Failed to save {}: {}", full_path.display(), e),
+                    Ok(_) => println!("Saved file: {}", full_path.display()),
+                    Err(e) => eprintln!("Failed to save {}: {}", full_path.display(), e),
                 }
             }
         }
 
         Response::new(200, "OK").with_body("File uploaded successfully\n")
     }
- 
+
     pub fn run(&mut self) {
         run_loop(self);
     }
