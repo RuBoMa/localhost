@@ -196,6 +196,14 @@ impl Server {
             let base_dir = root_dir.join(dir);
             let sub_path = &request.uri[route_prefix.len()..];
             let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
+            
+            let full_path = base_dir.join(sub_path.trim_start_matches('/'));
+            if full_path.is_dir() && !request.uri.ends_with('/') {
+                let location = format!("{}/", request.uri);
+                return Response::new(301, "Moved Permanently")
+                    .header("Location", &location);
+            }
+
             let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
 
             return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix);

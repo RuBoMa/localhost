@@ -81,7 +81,7 @@ impl Config {
                 }
 
                 // Check directory existence
-                if let Some(directory) = &cfg.directory {                
+                if let Some(directory) = &cfg.directory {
                     if route == "/" {
                         return Err("Route '/' cannot serve a directory — use a subpath like '/files' instead.".to_string());
                     }
