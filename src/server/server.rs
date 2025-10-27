@@ -222,11 +222,10 @@ impl Server {
                 return Ok(false); // Tcp will close on drop
             }
             Ok(_) => {
-                if let Some((request, consumed)) = client.parse_request() {
+                if let Some(request) = client.parse_request() {
                     let response = self.handle_request(&request, &client);
 
                     client.send_response(response)?;
-                    client.buffer.drain(..consumed);
 
                     // Check if client wants to close
                     let close_connection = request

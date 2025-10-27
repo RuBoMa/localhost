@@ -60,7 +60,7 @@ impl Admin {
     }
 
     /// Clears the session (e.g., on logout).
-    pub fn invalidate_session(&mut self) {
+    pub fn _invalidate_session(&mut self) {
         self.session_id = None;
         self.session_created = None;
     }

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tetris</title>
+  <link rel="stylesheet" href="tetris/styles.css">
+</head>
+
+<body>
+  <div id="everythingContainer">
+    <div id="previewContainer">
+    </div>
+    <div id="overlapWrapper">
+      <div id="gameContainer"></div>
+      <div id="menu">Menu:
+        <div id="continue">Continue</div>
+        <div id="restart">Restart</div>
+      </div>
+    </div>
+    <div id="infoContainer">
+      <div id="levelContainer">Level: 1</div>
+      <div id="scoreContainer"></div>
+      <div id="timeContainer"></div>
+      <div id="controlsContainer">
+        <table>
+          <tbody>
+            <tr>
+              <td class="controls">Controls:</td>
+            </tr>
+            <tr>
+              <td class="controls">Piece Down</td>
+              <td class="controls">↓</td>
+            </tr>
+            <tr>
+              <td class="controls">Piece Left</td>
+              <td class="controls">←</td>
+            </tr>
+            <tr>
+              <td class="controls">Piece Right</td>
+              <td class="controls">→</td>
+            </tr>
+            <tr>
+              <td class="controls">Rotate Clockwise</td>
+              <td class="controls">X</td>
+            </tr>
+            <tr>
+              <td class="controls">Rotate Counter Clockwise</td>
+              <td class="controls">Z</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script src="tetris/app.js"></script>
+</body>
+
+</html>

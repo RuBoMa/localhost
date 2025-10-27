@@ -1,4 +1,4 @@
-client_timeout_secs = 120
+client_timeout_secs = 30
 
 [[servers]]
 server_address = "127.0.0.1"
@@ -43,6 +43,10 @@ admin_access = false
 
   [servers.routes."/static"]
   directory = "./site/static"
+  methods = ["GET"]
+
+  [servers.routes."/tetris"]
+  directory = "./site2"
   methods = ["GET"]
 
 [admin]

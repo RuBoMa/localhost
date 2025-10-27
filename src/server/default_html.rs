@@ -83,7 +83,7 @@ pub fn default_405_response(allowed_methods: Option<&str>) -> Response {
     response
 }
 
-pub fn default_413_response() -> Response {
+pub fn _default_413_response() -> Response {
     default_error_response(413, "Payload Too Large", Some("The request is larger than the server is willing or able to process."))
 }
 

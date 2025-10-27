@@ -51,7 +51,7 @@ impl Request {
         Some(parse_multipart(&self.body, &boundary))
     }
     
-    pub fn has_cookies(&self) -> bool {
+    pub fn _has_cookies(&self) -> bool {
         self.headers.contains_key("cookie")
     }
 
