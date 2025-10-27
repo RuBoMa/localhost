@@ -16,6 +16,10 @@ root = "routes"
   to = "/"
   code = 302
 
+  [servers.routes."/upload"]
+  upload_dir = "uploads"
+  methods = ["post"]
+
 [[servers]]
 server_address = "127.0.0.1"
 server_name = "anotherhost"
