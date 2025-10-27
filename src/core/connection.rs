@@ -52,12 +52,21 @@ impl ClientConnection {
 
     pub fn send_response(&mut self, response: Response) -> Result<()> {
         let bytes = response.to_bytes();
-        println!(
-            "--- Raw HTTP Response ---\n{}",
-            String::from_utf8_lossy(&bytes)
-        );
-        self.stream.write_all(&bytes)?;
-        self.stream.flush()?;
+        let mut offset = 0;
+
+        while offset < bytes.len() {
+            match self.stream.write(&bytes[offset..]) {
+                Ok(0) => break, // connection closed
+                Ok(n) => offset += n, // advance by number of bytes written
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    // Kernel buffer full: stop and return for now
+                    // You need to wait for writable event (via kqueue/epoll) before continuing
+                    break;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
         Ok(())
     }
 

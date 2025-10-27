@@ -254,7 +254,7 @@ impl Server {
     fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {
         // Min and max upload size limits (in bytes)
         const MIN_UPLOAD_SIZE: usize = 1; // 1 byte minimum
-        const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024; // 10 MB maximum
+        const MAX_UPLOAD_SIZE: usize = 1 * 1024 * 1024; // 10 MB maximum
 
         if let Err(e) = std::fs::create_dir_all(upload_directory) {
             return default_500_response(
@@ -272,36 +272,39 @@ impl Server {
         };
 
         for part in parts {
+            // Skip empty uploads
+            let filename = match &part.filename {
+                Some(f) if !f.is_empty() => f,
+                _ => continue, // no file selected, skip this part
+            };
 
-            if let Some(filename) = &part.filename {
-                // Check individual file size
-                let file_size = part.content.len();
+            let file_size = part.content.len();
 
-                if file_size < MIN_UPLOAD_SIZE {
-                    return Response::new(400, "Bad Request")
-                        .with_body("Upload too small (minimum 1 byte)\n");
-                }
-                if file_size > MAX_UPLOAD_SIZE {
-                    return Response::new(413, "Payload Too Large").with_body(format!(
-                        "File '{}' exceeds maximum size of {} bytes (got {} bytes)\n",
-                        filename, MAX_UPLOAD_SIZE, file_size
-                    ));
-                }
+            if file_size < MIN_UPLOAD_SIZE {
+                return Response::new(400, "Bad Request")
+                    .with_body("Upload too small (minimum 1 byte)\n");
+            }
 
-                // Build full path under upload_directory
-                let full_path = Path::new(upload_directory).join(filename);
+            if file_size > MAX_UPLOAD_SIZE {
+                return Response::new(413, "Payload Too Large").with_body(format!(
+                    "File '{}' exceeds maximum size of {} bytes (got {} bytes)\n",
+                    filename, MAX_UPLOAD_SIZE, file_size
+                ));
+            }
 
-                if let Some(parent) = full_path.parent() {
-                    if let Err(e) = std::fs::create_dir_all(parent) {
-                        eprintln!("Failed to create directories for {}: {}", full_path.display(), e);
-                        continue;
-                    }
+            // Build full path under upload_directory
+            let full_path = Path::new(upload_directory).join(filename);
+
+            if let Some(parent) = full_path.parent() {
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    eprintln!("Failed to create directories for {}: {}", full_path.display(), e);
+                    continue;
                 }
-                
-                match std::fs::write(&full_path, &part.content) {
-                    Ok(_) => println!("Saved file: {}", full_path.display()),
-                    Err(e) => eprintln!("Failed to save {}: {}", full_path.display(), e),
-                }
+            }
+
+            match std::fs::write(&full_path, &part.content) {
+                Ok(_) => println!("Saved file: {}", full_path.display()),
+                Err(e) => eprintln!("Failed to save {}: {}", full_path.display(), e),
             }
         }
 
