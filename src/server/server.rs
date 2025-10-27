@@ -1,9 +1,8 @@
 use std::collections::HashMap;
-use std::io::Write;
 use std::io::{self, ErrorKind};
 use std::net::{SocketAddr, TcpListener};
 use std::path::Path;
-use std::{thread, time::Duration};
+use std::{time::Duration};
 
 use crate::config::ServerConfig;
 use crate::ClientConnection;
@@ -13,7 +12,7 @@ use crate::server::default_html::{
     default_welcome_response,
     default_method_not_allowed_response
 };
-use crate::server::handler::{execute_handler, serve_static_file};
+use crate::server::handler::{execute_handler};
 use crate::Config;
 
 use libc::{kevent, kevent64_s, kqueue, EVFILT_READ, EV_ADD, EV_DELETE, EV_ENABLE};

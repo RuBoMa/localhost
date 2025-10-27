@@ -1,0 +1,89 @@
+use std::path::Path;
+use std::process::{Command, Stdio};
+use std::io::{Read, Write};
+use crate::core::{Request, Response};
+use crate::config::ServerConfig;
+use crate::server::default_404_response;
+use super::utils::{resolve_cgi_interpreter, set_cgi_env, parse_cgi_output};
+
+pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, local_port: u16) -> Response {
+    let interpreter = resolve_cgi_interpreter(path, config);
+    let interpreter = match interpreter {
+        Some(cmd) => cmd,
+        None => {
+            let body: &str = &format!("<h1>502 Bad Gateway</h1>\n<p>No CGI interpreter configured for this file type</p>\n<p>Script: <code>{}</code></p>", path.display());
+            return Response::new(502, "Bad Gateway")
+                .header("Content-Type", "text/html; charset=utf-8")
+                .with_body(body);
+        }
+    };
+
+    // Remove duplicate root directory by resolving absolute path
+    let abs_path = match path.canonicalize() {
+        Ok(p) => p,
+        Err(_) => {
+            return default_404_response();
+        }
+    };
+
+    // Prepare command: [interpreter, script_path]
+    let mut cmd = Command::new(&interpreter);
+    cmd.arg(&abs_path);
+
+    // Working directory = script's directory
+    if let Some(dir) = abs_path.parent() {
+        cmd.current_dir(dir);
+    }
+
+    // Pipe stdin/stdout
+    cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
+
+    // Environment variables per CGI/1.1 (with strict Host/port validation)
+    if let Err(resp) = set_cgi_env(&mut cmd, &abs_path, request, config, local_port) {
+        return resp;
+    }
+
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) => {
+            let body = format!("<h1>502 Bad Gateway</h1><p>Failed to spawn CGI: {}</p>", e);
+            return Response::new(502, "Bad Gateway")
+                .header("Content-Type", "text/html; charset=utf-8")
+                .with_body(body);
+        }
+    };
+
+    // Send request body to CGI stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        if let Err(e) = stdin.write_all(&request.body) {
+            let body = format!(
+                "<h1>502 Bad Gateway</h1><p>Failed to write request body to CGI: {}</p>",
+                e
+            );
+            return Response::new(502, "Bad Gateway")
+                .header("Content-Type", "text/html; charset=utf-8")
+                .with_body(body);
+        }
+        let _ = stdin.flush();
+        drop(stdin);
+    }
+
+    // Read CGI stdout fully
+    let mut out = Vec::new();
+    if let Some(mut stdout) = child.stdout.take() {
+        let _ = stdout.read_to_end(&mut out);
+    }
+
+    let _ = child.wait();
+
+    // Parse CGI headers/body
+    let (status_code, reason, headers, body) = parse_cgi_output(&out);
+    let mut resp = Response::new(status_code, &reason);
+    for (key, value) in headers {
+        if key.eq_ignore_ascii_case("Content-Length") {
+            continue;
+        }
+        resp = resp.header(&key, &value);
+    }
+    resp.with_body(body)
+}
