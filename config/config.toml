@@ -46,6 +46,7 @@ admin_access = false
   methods = ["GET"]
 
   [servers.routes."/tetris"]
+  filename = "index.html"
   directory = "./site2"
   methods = ["GET"]
 
