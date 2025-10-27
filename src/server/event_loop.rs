@@ -1,4 +1,4 @@
-use std::os::fd::{RawFd, AsRawFwd};
+use std::os::fd::{RawFd, AsRawFd};
 use libc::{kqueue, kevent, kevent64_s, EV_ADD, EV_DELETE, EV_ENABLE, EVFILT_READ};
 use crate::server::Server;
 
