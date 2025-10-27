@@ -15,14 +15,17 @@ root = "routes"
   [servers.routes."/hello"]
   filename = "hello.py"
 
+  [servers.routes."/broken"]
+  filename = "no_response.py"
+
   [servers.routes."/old-page".redirect]
   to = "/"
   code = 302
 
   # Map extensions to CGI interpreter/command
-  # Presumably should use python3 instead of python if running on mac
+  # Run using value "python3" if on mac, "python" if on windows
   [servers.cgi_handlers]
-  ".py" = "python"
+  ".py" = "python3"
 
 [[servers]]
 server_address = "127.0.0.1"

@@ -76,14 +76,6 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, loc
 
     let _ = child.wait();
 
-    // Parse CGI headers/body
-    let (status_code, reason, headers, body) = parse_cgi_output(&out);
-    let mut resp = Response::new(status_code, &reason);
-    for (key, value) in headers {
-        if key.eq_ignore_ascii_case("Content-Length") {
-            continue;
-        }
-        resp = resp.header(&key, &value);
-    }
-    resp.with_body(body)
+    // Parse CGI output and return it as a Response
+    parse_cgi_output(&out)
 }
