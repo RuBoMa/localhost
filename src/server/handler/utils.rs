@@ -2,6 +2,7 @@
 use std::process::Command;
 use crate::core::{Request, Response};
 use crate::config::ServerConfig;
+use crate::server::error_response_from_config;
 
 /// Very basic MIME type guessing based on file extension.
 /// Extend as needed for your use case.
@@ -97,14 +98,15 @@ pub fn split_uri(uri: &str) -> (&str, &str) {
     }
 }
 
-pub fn parse_cgi_output(output: &[u8]) -> (u16, String, Vec<(String, String)>, Vec<u8>) {
+pub fn parse_cgi_output(output: &[u8], config: &ServerConfig) -> Response {
     // Potentially add redirect functionality and default content type
     let (header_bytes, body_bytes) = if let Some(pos) = find_sequence(output, b"\r\n\r\n") {
         (&output[..pos], &output[pos + 4..])
     } else if let Some(pos) = find_sequence(output, b"\n\n") {
         (&output[..pos], &output[pos + 2..])
     } else {
-        return (200, "OK".to_string(), vec![], output.to_vec());
+        let resp = Response::new(200, "OK");
+        return resp.with_body(output.to_vec())
     };
 
     let header_text = String::from_utf8_lossy(header_bytes);
@@ -136,7 +138,18 @@ pub fn parse_cgi_output(output: &[u8]) -> (u16, String, Vec<(String, String)>, V
         }
     }
 
-    (status_code, reason, headers, body_bytes.to_vec())
+    if status_code != 200u16 {
+        error_response_from_config(status_code, config)
+    } else {
+        let mut resp = Response::new(status_code, &reason);
+        for (key, value) in headers {
+            if key.eq_ignore_ascii_case("Content-Length") {
+                continue;
+            }
+            resp = resp.header(&key, &value);
+        }
+        resp.with_body(body_bytes.to_vec())
+    }
 }
 
 /// Find pattern in buffer
