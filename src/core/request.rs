@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::core::{extract_boundary, parse_multipart, MultipartPart};
+use crate::core::{extract_boundary, parse_multipart, MultipartPart, url_decode};
 
 #[derive(Debug)]
 pub struct Request {
@@ -49,6 +49,52 @@ impl Request {
     pub fn multipart_parts(&self) -> Option<Vec<MultipartPart>> {
         let boundary = extract_boundary(self)?;
         Some(parse_multipart(&self.body, &boundary))
+    }
+    
+    pub fn has_cookies(&self) -> bool {
+        self.headers.contains_key("cookie")
+    }
+
+    pub fn cookies(&self) -> HashMap<String, String> {
+        let mut result = HashMap::new();
+        if let Some(cookie_header) = self.headers.get("cookie") {
+            for pair in cookie_header.split(';') {
+                let pair = pair.trim();
+                if let Some((name, value)) = pair.split_once('=') {
+                    result.insert(name.to_string(), value.to_string());
+                }
+            }
+        }
+        result
+    }
+
+    pub fn get_cookie(&self, name: &str) -> Option<String> {
+        self.cookies().get(name).cloned()
+    }
+
+    pub fn parse_form(&self) -> HashMap<String, String> {
+        let mut form = HashMap::new();
+
+        // Only parse if the content-type is form-urlencoded
+        if let Some(ct) = self.headers.get("content-type") {
+            if ct.starts_with("application/x-www-form-urlencoded") {
+                let body_str = match std::str::from_utf8(&self.body) {
+                    Ok(s) => s,
+                    Err(_) => return form, // invalid UTF-8, return empty
+                };
+
+                for pair in body_str.split('&') {
+                    if let Some((k, v)) = pair.split_once('=') {
+                        // Decode URL-encoded keys and values
+                        let key = url_decode(k).unwrap_or_else(|| k.to_string());
+                        let value = url_decode(v).unwrap_or_else(|| v.to_string());
+                        form.insert(key, value);
+                    }
+                }
+            }
+        }
+
+        form
     }
 }
 

@@ -14,19 +14,19 @@ use crate::server::default_html::{
     default_404_response,
     default_405_response,
     default_500_response,
-    default_welcome_response,
+    default_index_response,
 };
 use crate::server::match_route;
-use crate::server::handler::{serve_static_file, generate_directory_listing, resolve_target_path};
+use crate::server::handler::{Admin, serve_static_file, generate_directory_listing, resolve_target_path};
 use crate::server::ServerSocket;
 use crate::server::run_loop;
-
 
 #[derive(Debug)]
 pub struct Server {
     pub sockets: Vec<ServerSocket>,
     pub clients: Vec<ClientConnection>,
     pub client_timeout: Duration,
+    pub admin: Admin,
 }
 
 impl Server {
@@ -65,10 +65,13 @@ impl Server {
             ));
         }
 
+        let admin = Admin::new(config.admin.clone());
+
         Ok(Server {
             sockets,
             clients: Vec::new(),
             client_timeout,
+            admin,
         })
     }
 
@@ -81,7 +84,6 @@ impl Server {
     ) -> Response {
         // Full target path is base_path + request_subpath
         let target_path = root_dir.join(request_subpath.trim_start_matches('/'));
-       
         let Ok(target_path) = target_path.canonicalize() else {
             return default_404_response();
         };
@@ -118,7 +120,7 @@ impl Server {
         default_404_response()
     }
 
-    fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
+    fn handle_request(&mut self, request: &Request, client: &ClientConnection) -> Response {
         // Step 1: Identify which socket the client connected to
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
             Some(sock) => sock,
@@ -133,8 +135,25 @@ impl Server {
         let config = socket.resolve_config(host_header);
         let root_dir = Path::new(&config.root);
 
-        if !root_dir.exists() {
-            return default_welcome_response();
+        // ✅ Step 2.5: Check admin access requirement
+        if socket.requires_admin_auth() {
+            let is_authenticated = self.admin.validate_request(request);
+
+            // If not authenticated
+            if !is_authenticated {
+                if request.uri == "/login" {
+                    if request.method.eq_ignore_ascii_case("POST") {
+                        // POST → attempt login
+                        return self.admin.handle_login(request);
+                    } else {
+                        // GET → serve login page
+                        return serve_static_file(&root_dir.join("login.html"));
+                    }
+                } else {
+                    // Any other admin route → redirect to login
+                    return Response::redirect("/login".to_string(), 302);
+                }
+            }
         }
 
         // Step 3: Find route match
@@ -187,12 +206,13 @@ impl Server {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
                 return default_405_response(Some("GET, HEAD"));
             }
+
             let full_path = root_dir.join(filename);
             return serve_static_file(&full_path);
         }
 
-        // Step 9: Misconfiguration
-        return default_500_response(Some("Route is misconfigured (no redirect or file)."));
+        // Step 9: Misconfiguration. serve default index
+        default_index_response(&config.routes)
     }
 
     pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {

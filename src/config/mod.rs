@@ -8,6 +8,9 @@ pub struct Config {
     
     #[serde(default = "default_timeout_secs")]
     pub client_timeout_secs: u64,
+    
+    #[serde(default)]
+    pub admin: AdminConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -21,6 +24,9 @@ pub struct ServerConfig {
     
     #[serde(default)]
     pub routes: HashMap<String, RouteConfig>,
+    
+    #[serde(default)]
+    pub admin_access: bool,
 }
 
 fn default_timeout_secs() -> u64 {
@@ -33,15 +39,17 @@ impl Config {
             if server.ports.is_empty() {
                 return Err(format!("Server at {} has no ports", server.server_address));
             }
-
-            if server.routes.is_empty() {
-                continue;
+            
+            if server.root.trim().is_empty() {
+                return Err(format!(
+                    "Server at {} must have a non-empty 'root' directory defined",
+                    server.server_address
+                ));
             }
 
             if !Path::new(&server.root).is_dir() {
                 return Err(format!("Root directory '{}' does not exist", server.root));
             }
-
             
             for (route, cfg) in &server.routes {
                 if !route.starts_with("/") {
@@ -54,10 +62,10 @@ impl Config {
                     && cfg.redirect.is_none()
                     && cfg.upload_dir.is_none()
                 {
-                    return Err(format!(
-                        "Route '{}' must define at least one of: filename, directory, redirect, or upload_dir",
+                    eprintln!(
+                        "Warning: Route '{}' has no directory, redirect, upload_dir, or filename defined. Default index will be served.",
                         route
-                    ));
+                    );
                 }
 
                 // Check file existence
@@ -73,7 +81,11 @@ impl Config {
                 }
 
                 // Check directory existence
-                if let Some(directory) = &cfg.directory {
+                if let Some(directory) = &cfg.directory {                
+                    if route == "/" {
+                        return Err("Route '/' cannot serve a directory — use a subpath like '/files' instead.".to_string());
+                    }
+
                     let full_path = Path::new(&server.root).join(directory);
                     if !full_path.exists() || !full_path.is_dir() {
                         eprintln!(
@@ -156,4 +168,21 @@ pub struct RedirectConfig {
 
 fn default_redirect_code() -> u16 {
     302 // Default to 302 Found
+}
+
+#[derive(Debug, Default, Deserialize, Clone)]
+pub struct AdminConfig {
+    #[serde(default = "default_admin_username")]
+    pub username: String,
+
+    #[serde(default = "default_admin_password")]
+    pub password: String,
+}
+
+fn default_admin_username() -> String {
+    "admin".to_string()
+}
+
+fn default_admin_password() -> String {
+    "password123".to_string()
 }

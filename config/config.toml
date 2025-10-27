@@ -2,30 +2,49 @@ client_timeout_secs = 120
 
 [[servers]]
 server_address = "127.0.0.1"
-ports = [8080, 8081]
+ports = [8080]
 server_name = "localhost"
-root = "routes"
+root = "root"
+admin_access = true
 
+  # Default route: homepage / list of routes
   [servers.routes."/"]
-  filename = "home.html"
-  methods = ["post", "get"]
+  methods = ["GET"]
 
-  [servers.routes."/old-page".redirect]
-  to = "/"
-  code = 302
+  # Login redirect: example, always allowed
+  [servers.routes."/login"]
+  filename = "login.html"
+  methods = ["GET", "POST"]
 
-  [servers.routes."/static"]
-  directory = "static"
-  directory_listing = true
-  upload_dir = "static"
-  methods = ["get", "post", "delete"]
-
+  # Upload / root directory listing
   [servers.routes."/root"]
   directory = ""
   directory_listing = true
-  methods = ["get", "post", "delete"]
-  
+  upload_dir = ""
+  methods = ["GET", "POST", "DELETE"]
+
+  [servers.routes."/static"]
+  directory = "static"
+  methods = ["GET"]
+
 [[servers]]
 server_address = "127.0.0.1"
-server_name = "anotherhost"
-ports = [8080]
+ports = [8081]
+server_name = "public"
+root = "root"
+admin_access = false
+
+  [servers.routes."/"]
+  methods = ["GET"]
+  
+  [servers.routes."/piscine-js"]
+  filename = "./site/index.html"
+  methods = ["GET"]
+
+  [servers.routes."/static"]
+  directory = "./site/static"
+  methods = ["GET"]
+
+[admin]
+username = "admin"
+password = "pewpew321"

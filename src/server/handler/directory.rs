@@ -1,6 +1,7 @@
 use std::{fs, path::Path, path::PathBuf};
 
 use crate::core::Response;
+use crate::core::url_encode;
 
 pub fn generate_directory_listing(dir: &Path, base_url_path: &str, upload_allowed: bool) -> Response {
     let mut html = String::from(
@@ -147,23 +148,6 @@ document.querySelectorAll('.upload-form').forEach(form => {
     Response::new(200, "OK")
         .header("Content-Type", "text/html")
         .with_body(html)
-}
-
-fn url_encode(input: &str) -> String {
-    let mut encoded = String::new();
-    for b in input.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                // Safe characters, push as is
-                encoded.push(b as char);
-            }
-            _ => {
-                // Percent-encode everything else
-                encoded.push_str(&format!("%{:02X}", b));
-            }
-        }
-    }
-    encoded
 }
 
 pub fn resolve_target_path(

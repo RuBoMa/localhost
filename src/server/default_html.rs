@@ -1,19 +1,43 @@
+use std::collections::HashMap;
+use crate::config::RouteConfig;
 use crate::core::Response;
 
-pub fn default_welcome_response() -> Response {
-    Response::new(200, "OK")
-        .header("Content-Type", "text/html")
-        .with_body(
-            r#"<!DOCTYPE html>
+pub fn default_index_response(routes: &HashMap<String, RouteConfig>) -> Response {
+    let mut body = String::from(r#"<!DOCTYPE html>
 <html>
-<head><title>localhost</title></head>
+<head>
+    <meta charset="utf-8">
+    <title>Registered Routes</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+</head>
 <body>
-  <h1>Welcome</h1>
-  <p>Your server is running, but no routes or root directory were configured.</p>
+    <h1>Registered Routes</h1>
+    <ul>
+"#);
+
+    for (route, cfg) in routes {
+        let methods = if let Some(methods) = &cfg.methods {
+            methods.join(", ")
+        } else {
+            "ALL".to_string()
+        };
+
+        body.push_str(&format!(
+            r#"    <li>[{methods}] - <a href="{route}">{route}</a></li>"#,
+            route = route,
+            methods = methods
+        ));
+        body.push('\n');
+    }
+
+    body.push_str(r#"  </ul>
 </body>
 </html>
-"#,
-        )
+"#);
+
+    Response::new(200, "OK")
+        .header("Content-Type", "text/html")
+        .with_body(body)
 }
 
 pub fn default_error_response(status_code: u16, reason: &str, message: Option<&str>) -> Response {
