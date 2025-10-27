@@ -128,10 +128,10 @@ impl Server {
 
     pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
-            /*             Ok(0) => {
+            Ok(0) => {
                 println!("[*] Client {} closed the connection", client.peer_addr);
                 return Ok(false); // Tcp will close on drop
-            } */
+            }
             Ok(_) => {
                 if let Some((request, consumed)) = client.parse_request() {
                     let response = self.handle_request(&request, &client);
