@@ -29,6 +29,12 @@ pub fn default_index_response(sockets: &Vec<ServerSocket>) -> Response {
             ));
 
             for (route, cfg) in &config.routes {
+                let hostname = if let Some(name) = &config.server_name {
+                    if !name.is_empty() { name.clone() } else { socket.addr.ip().to_string() }
+                } else {
+                    socket.addr.ip().to_string()
+                };
+
                 let methods = if let Some(methods) = &cfg.methods {
                     methods.join(", ")
                 } else {
@@ -37,7 +43,7 @@ pub fn default_index_response(sockets: &Vec<ServerSocket>) -> Response {
 
                 body.push_str(&format!(
                     r#"  <li><span class="route-methods">[{methods}]</span> <a href="http://{}:{}{}">{}</a></li>"#,
-                    socket.addr.ip(),
+                    hostname,
                     socket.addr.port(),
                     route,
                     route,

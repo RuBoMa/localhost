@@ -75,6 +75,10 @@ admin_access = false
   directory = "./site2"
   methods = ["GET"]
 
+  [servers.routes."/tetris_2"]
+  directory = "./site3"
+  methods = ["GET"]
+
 [admin]
 username = "admin"
 password = "pewpew321"

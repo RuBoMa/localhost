@@ -266,6 +266,7 @@ impl Server {
 
                     if close_connection {
                         client.stream.shutdown(std::net::Shutdown::Both)?;
+                        println!("[*] Close connection to  {}", client.peer_addr);
                         return Ok(false); // stop handling
                     }
                 }
