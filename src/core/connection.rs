@@ -1,6 +1,6 @@
 use std::io::{ErrorKind, Read, Result, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::time::Instant;
+use std::time::{Instant, Duration};
 
 use crate::core::{Request, Response};
 
@@ -10,7 +10,7 @@ pub struct ClientConnection {
     pub peer_addr: SocketAddr,
     pub local_addr: SocketAddr,
     pub buffer: Vec<u8>,
-    pub last_active: Instant,
+    pub request_at: Option<Instant>
 }
 
 impl ClientConnection {
@@ -24,7 +24,7 @@ impl ClientConnection {
             peer_addr,
             local_addr,
             buffer: Vec::with_capacity(8192),
-            last_active: Instant::now(),
+            request_at: None,
         })
     }
 
@@ -35,7 +35,10 @@ impl ClientConnection {
             Ok(0) => Ok(0), // Connection closed
             Ok(n) => {
                 self.buffer.extend_from_slice(&temp_buf[..n]);
-                self.last_active = Instant::now();
+                
+                if self.request_at.is_none() {
+                    self.request_at = Some(Instant::now());
+                }
                 Ok(n)
             }
             Err(e) if e.kind() == ErrorKind::WouldBlock => Ok(0), // No data yet
@@ -49,12 +52,27 @@ impl ClientConnection {
 
     pub fn send_response(&mut self, response: Response) -> Result<()> {
         let bytes = response.to_bytes();
-        println!(
-            "--- Raw HTTP Response ---\n{}",
-            String::from_utf8_lossy(&bytes)
-        );
-        self.stream.write_all(&bytes)?;
-        self.stream.flush()?;
+        let mut offset = 0;
+
+        while offset < bytes.len() {
+            match self.stream.write(&bytes[offset..]) {
+                Ok(0) => break, // connection closed
+                Ok(n) => offset += n, // advance by number of bytes written
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    // Kernel buffer full: stop and return for now
+                    // You need to wait for writable event (via kqueue/epoll) before continuing
+                    break;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
         Ok(())
+    }
+
+    pub fn is_request_timed_out(&self, now: Instant, timeout: Duration) -> bool {
+        self.request_at
+            .map(|t| now.duration_since(t) > timeout)
+            .unwrap_or(false)
     }
 }

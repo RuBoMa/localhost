@@ -1,4 +1,4 @@
-use std::path::Path;
+﻿use std::path::Path;
 use std::process::Command;
 use crate::core::{Request, Response};
 use crate::config::ServerConfig;
@@ -54,7 +54,7 @@ pub fn set_cgi_env(
     cmd.env("GATEWAY_INTERFACE", "CGI/1.1");
     cmd.env("REQUEST_METHOD", &request.method);
     cmd.env("QUERY_STRING", query);
-    cmd.env("SERVER_PROTOCOL", &request.version);
+    cmd.env("SERVER_PROTOCOL", &request._version);
     cmd.env("SCRIPT_NAME", uri_path);
     cmd.env("SCRIPT_FILENAME", script_path.as_os_str());
 
@@ -66,7 +66,7 @@ pub fn set_cgi_env(
     cmd.env("SERVER_PORT", host_port.to_string());
     cmd.env("DOCUMENT_ROOT", &config.root);
 
-    if let Some(ct) = request.headers.get("Content-Type") {
+    if let Some(ct) = request.headers.get("content-type") {
         cmd.env("CONTENT_TYPE", ct);
     }
     // Always reflect the parsed body length for CGI
@@ -155,7 +155,7 @@ pub fn check_name_and_port(
     local_port: u16,
 ) -> Result<(String, u16), Response> {
     // Check that host header exists
-    let host = match request.headers.get("Host") {
+    let host = match request.headers.get("host") {
         Some(h) if !h.trim().is_empty() => h.trim(),
         _ => {
             return Err(
@@ -236,3 +236,4 @@ pub fn default_reason_phrase(code: u16) -> &'static str {
         _ => "OK",
     }
 }
+

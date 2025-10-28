@@ -1,7 +1,7 @@
-use std::path::Path;
-use std::fs;
 use crate::core::Response;
-use crate::server::default_404_response;
+use crate::server::default_html::{default_error_response};
+use std::fs;
+use std::path::Path;
 use super::utils::guess_mime_type;
 
 pub fn serve_static_file(path: &Path) -> Response {
@@ -13,8 +13,6 @@ pub fn serve_static_file(path: &Path) -> Response {
                 .header("Content-Type", mime)
                 .with_body(contents)
         }
-        Err(_) => {
-            default_404_response()
-        }
+        Err(_) => default_error_response(404, "Not found", None),
     }
 }

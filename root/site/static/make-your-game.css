@@ -1,0 +1,210 @@
+:root {
+    --background: hsl(0, 0%, 12%);
+    --overlay: rgba(0, 0, 0, 0.767);
+    --text: hsl(0, 0%, 80%);
+    --clear: hsl(0, 0%, 65%);
+    --disabled: hsl(0, 0%, 35%);
+    --purple: #975aa7;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Roboto Mono", monospace;
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: var(--background);
+}
+
+#svg-container {
+    background-color: black;
+}
+
+.crosshair {
+    stroke: goldenrod;
+    stroke-width: 2;
+    fill: transparent;
+}
+
+.shoot {
+    animation: shootAnimation 0.2s ease-in-out;
+}
+
+.target-grp {
+    will-change: transform, opacity;
+}
+
+@keyframes shootAnimation {
+    0% {
+        transform: translate(0, 0); /* Starting position */
+    }
+    25% {
+        transform: translate(2px, -2px); /* Slight move up and right */
+    }
+    50% {
+        transform: translate(-2px, 2px); /* Slight move down and left */
+    }
+    75% {
+        transform: translate(2px, 2px); /* Slight move down and right */
+    }
+    100% {
+        transform: translate(0, 0); /* Return to original position */
+    }
+}
+
+.feedback-display {
+    text-anchor: middle;
+    font-size: 30px;
+    display: none;
+    will-change: transform, opacity;
+}
+
+#fps-display {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 18px;
+    color: red; 
+    padding: 5px 10px; 
+    z-index: 10; 
+}
+
+#ui rect {
+        stroke: gray;
+        stroke-width: 1px;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+.target-fade-in {
+    animation: fadeIn 1s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(200px);
+    }
+}
+
+.target-removal {
+    animation: fadeOut 1s forwards;
+}
+
+@keyframes fadeInOutUp {
+    0% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+    33% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.fade-in-out-up {
+    animation: fadeInOutUp 0.6s ease-out forwards;  
+}
+
+@keyframes flashRed {
+    0% {
+        fill: red;
+    }
+    50% {
+        fill: transparent;
+    }
+    100% {
+        fill: red;
+    }
+}
+
+.flashing-red {
+    animation: flashRed 1s infinite;
+}
+
+.target-flash {
+    animation: flash 2s infinite;
+}
+
+@keyframes flash {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.2;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes shake {
+    0% {
+        transform: translateX(0);
+        stroke: red;
+        stroke-width: 5;
+    }
+    25% {
+        transform: translateX(-3px);
+    }
+    50% {
+        transform: translateX(3px);
+        stroke: grey;
+        stroke-width: 1;
+    }
+    75% {
+        transform: translateX(-3px);
+    }
+    100% {
+        transform: translateX(3px);
+        stroke: red;
+        stroke-width: 3;
+    }
+}
+
+.shake {
+    animation: shake 0.3s ease infinite;
+}
+
+@keyframes hit {
+    0% {
+        stroke: green;
+        stroke-width: 5;
+    }
+    50% {
+        stroke: green;
+        stroke-width: 3;
+    }
+    100% {
+        stroke: green;
+        stroke-width: 5;
+    }
+}
+    
+.hit {
+    animation: hit 0.6s ease infinite;
+}

@@ -1,98 +1,32 @@
-use std::collections::HashMap;
-use std::io::{self, ErrorKind};
-use std::net::{SocketAddr, TcpListener};
-use std::path::Path;
-use std::{time::Duration};
+﻿use std::collections::HashMap;
+use std::io::{self};
+use std::net::{SocketAddr};
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
-use crate::config::ServerConfig;
+use crate::Config;
+use crate::config::{ServerConfig, RouteConfig};
 use crate::ClientConnection;
 use crate::core::{Response, Request};
 use crate::server::default_html::{
+    default_400_response,
+    default_403_response,
     default_404_response,
-    default_welcome_response,
-    default_method_not_allowed_response
+    default_405_response,
+    default_500_response,
+    default_index_response,
 };
-use crate::server::handler::{execute_handler};
-use crate::Config;
-
-use libc::{kevent, kevent64_s, kqueue, EVFILT_READ, EV_ADD, EV_DELETE, EV_ENABLE};
-use std::os::fd::AsRawFd;
-
-#[derive(Debug)]
-pub struct ServerSocket {
-    pub addr: SocketAddr,
-    pub listener: TcpListener,
-    pub configs: Vec<ServerConfig>,
-}
-
-impl ServerSocket {
-    /// Create a new non-blocking socket bound to the address and associate it with config.
-    pub fn try_bind(
-        addr: SocketAddr,
-        configs: Vec<ServerConfig>,
-    ) -> io::Result<Self> {
-        let listener = TcpListener::bind(addr)?;
-        listener.set_nonblocking(true)?;
-        println!("[+] Bound to {}", addr);
-
-        Ok(Self {
-            addr,
-            listener,
-            configs,
-        })
-    }
-
-    pub fn resolve_config(&self, server_name: Option<&str>) -> &ServerConfig {
-        if let Some(name) = server_name {
-            for config in &self.configs {
-                if let Some(cfg_name) = &config.server_name {
-                    if cfg_name == name {
-                        return config;
-                    }
-                }
-            }
-        }
-
-        // Fallback: first server config
-        &self.configs[0]
-    }
-
-    pub fn timeout(&self, server_name: Option<&str>) -> Duration {
-        Duration::from_secs(self.resolve_config(server_name).client_timeout_secs)
-    }
-
-    /// Accepts all pending connections (non-blocking), returns new clients.
-    pub fn try_accept(&self) -> Vec<ClientConnection> {
-        let mut new_clients = Vec::new();
-
-        loop {
-            match self.listener.accept() {
-                Ok((stream, peer_addr)) => {
-                    println!(
-                        "[*] Accepted connection from {} on {}",
-                        peer_addr, self.addr
-                    );
-                    match ClientConnection::new(stream, peer_addr) {
-                        Ok(client) => new_clients.push(client),
-                        Err(e) => eprintln!("[!] Failed to create client connection: {}", e),
-                    }
-                }
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => break,
-                Err(e) => {
-                    eprintln!("[!] Error accepting on {}: {}", self.addr, e);
-                    break;
-                }
-            }
-        }
-
-        new_clients
-    }
-}
+use crate::server::match_route;
+use crate::server::handler::{execute_handler, serve_static_file, generate_directory_listing, resolve_target_path, Admin};
+use crate::server::ServerSocket;
+use crate::server::run_loop;
 
 #[derive(Debug)]
 pub struct Server {
-    sockets: Vec<ServerSocket>,
-    clients: Vec<ClientConnection>,
+    pub sockets: Vec<ServerSocket>,
+    pub clients: Vec<ClientConnection>,
+    pub client_timeout: Duration,
+    pub admin: Admin,
 }
 
 impl Server {
@@ -114,6 +48,7 @@ impl Server {
             }
         }
 
+        let client_timeout = Duration::from_secs(config.client_timeout_secs);
         let mut sockets = Vec::new();
 
         for (addr, configs) in grouped {
@@ -130,68 +65,160 @@ impl Server {
             ));
         }
 
+        let admin = Admin::new(config.admin.clone());
+
         Ok(Server {
             sockets,
             clients: Vec::new(),
+            client_timeout,
+            admin,
         })
     }
 
-    fn handle_request(&self, request: &Request, client: &ClientConnection) -> Response {
-        // Step 1: Get the socket the client connected to (by local_addr)
+    pub fn handle_directory_request(
+        &self,
+        root_dir: &Path,
+        route_cfg: &RouteConfig,
+        request_subpath: &str,
+        route_prefix: &str,
+        request: &Request,
+        config: &ServerConfig,
+        client: &ClientConnection,
+    ) -> Response {
+        // Full target path is base_path + request_subpath
+        let target_path = root_dir.join(request_subpath.trim_start_matches('/'));
+        let Ok(target_path) = target_path.canonicalize() else {
+            return default_404_response();
+        };
+        let Ok(root_dir) = root_dir.canonicalize() else {
+            return default_500_response(Some("Invalid root directory"));
+        };
+        if !target_path.starts_with(&root_dir) {
+            return default_403_response();
+        }
+
+        if target_path.is_file() {
+            return execute_handler(&target_path, request, config, client.local_addr.port());
+        }
+
+        if target_path.is_dir() {
+            if route_cfg.directory_listing {
+                return generate_directory_listing(
+                    &target_path,
+                    route_prefix,
+                    route_cfg.upload_dir.is_some()
+                );
+            }
+
+            if let Some(file) = route_cfg.filename.clone() {
+                return execute_handler(&target_path.join(file), request, config, client.local_addr.port());
+            }
+
+            if target_path.join("index.html").exists() {
+                return execute_handler(&target_path.join("index.html"), request, config, client.local_addr.port());
+            }
+            return default_403_response();
+        }
+
+        default_404_response()
+    }
+
+    fn handle_request(&mut self, request: &Request, client: &ClientConnection) -> Response {
+        // Step 1: Identify which socket the client connected to
         let socket = match self.sockets.iter().find(|s| s.addr == client.local_addr) {
             Some(sock) => sock,
             None => {
                 eprintln!("[!] No socket found for local addr {}", client.local_addr);
-                return Response::new(500, "Internal Server Error")
-                    .header("Content-Type", "text/html")
-                    .header("Connection", "close")
-                    .with_body("<h1>500 Internal Server Error</h1><p>Socket not found.</p>");
+                return default_500_response(Some("Socket not found."));
             }
         };
 
-        // Step 2: Extract server_name from the Host header
+        // Step 2: Resolve configuration based on Host header
         let host_header = request.headers.get("Host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
         let root_dir = Path::new(&config.root);
 
-        // Step 3: Show default welcome page only if root directory doesn't exist
-        if !root_dir.exists() {
-            return default_welcome_response()
-        }
+        // Step 2.5: Check admin access requirement
+        if socket.requires_admin_auth() {
+            let is_authenticated = self.admin.validate_request(request);
 
-        // Step 4: Route matching
-        if let Some(route_cfg) = config.routes.get(&request.uri) {
-            // Step 4.1: Check if method is allowed
-            if let Some(allowed_methods) = &route_cfg.methods {
-                if !allowed_methods.iter().any(|m| m.eq_ignore_ascii_case(&request.method)) {
-                    let allow_header = allowed_methods.join(", ");
-                    return default_method_not_allowed_response(Some(&allow_header));
+            // If not authenticated
+            if !is_authenticated {
+                if request.uri == "/login" {
+                    if request.method.eq_ignore_ascii_case("POST") {
+                        // POST â†’ attempt login
+                        return self.admin.handle_login(request);
+                    } else {
+                        // GET â†’ serve login page
+                        return serve_static_file(&root_dir.join("login.html"));
+                    }
+                } else {
+                    // Any other admin route â†’ redirect to login
+                    return Response::redirect("/login".to_string(), 302);
                 }
             }
-
-            // Step 4.2: Handle redirect if defined
-            if let Some(redirect) = &route_cfg.redirect {
-                return Response::redirect(redirect.to.clone(), redirect.code);
-            }
-
-            // Step 4.3: Serve static file if filename is defined
-            if let Some(filename) = &route_cfg.filename {
-                let full_path = root_dir.join(filename);
-                return execute_handler(&full_path, &request, config, client.local_addr.port());
-            }
-
-            // Step 4.4: Misconfigured route (no redirect or filename)
-            return Response::new(500, "Internal Server Error")
-                .header("Content-Type", "text/html")
-                .with_body("<h1>500 Internal Server Error</h1><p>Route is misconfigured (no redirect or file).</p>");
-    
-        } else {
-            // Route not defined in config, but root exists
-            default_404_response()
         }
+
+        // Step 3: Find route match
+        let (route_prefix, route_cfg) = match match_route(&config.routes, &request.uri) {
+            Some(r) => r,
+            None => return default_404_response(),
+        };
+
+        // Step 4: Redirect
+        if let Some(redirect) = &route_cfg.redirect {
+            return Response::redirect(redirect.to.clone(), redirect.code);
+        }
+
+        // Step 5: Enforce allowed methods
+        if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
+            return default_405_response(Some(&allowed_methods));
+        }
+
+        // Step 6: Upload handling (POST â†’ upload_dir)
+        if let Some(upload_dir) = &route_cfg.upload_dir {    
+            let full_target_path = resolve_target_path(
+                &request.uri,
+                &route_prefix,
+                root_dir, &upload_dir);
+
+            if request.method.eq_ignore_ascii_case("POST") {
+                return Server::handle_upload(request, &full_target_path);
+            }
+            
+            if request.method.eq_ignore_ascii_case("DELETE") {
+                return Server::handle_delete(&full_target_path);
+            }
+        }
+        
+        // Step 7: Directory handling (GET/HEAD â†’ directory or listing)
+        if let Some(dir) = &route_cfg.directory {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return default_405_response(Some("GET, HEAD"));
+            }
+            let base_dir = root_dir.join(dir);
+            let sub_path = &request.uri[route_prefix.len()..];
+            let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
+            let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
+
+            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix, request, config, client);
+        }
+
+        // Step 8: Static file handling (GET/HEAD â†’ filename)
+        if let Some(filename) = &route_cfg.filename {
+            if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                return default_405_response(Some("GET, HEAD"));
+            }
+
+            let full_path = root_dir.join(filename);
+            return execute_handler(&full_path, request, config, client.local_addr.port());
+        }
+
+        // Step 9: Misconfiguration. serve default index
+        default_index_response(&config.routes)
     }
 
-    fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
+    pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
             Ok(0) => {
                 println!("[*] Client {} closed the connection", client.peer_addr);
@@ -227,146 +254,90 @@ impl Server {
         }
     }
 
-    pub fn run(&mut self) {
-        // Create kqueue
-        let kqueue = unsafe { kqueue() };
-        if kqueue == -1 {
-            panic!("Failed to create kqueue");
+    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {
+        // Min and max upload size limits (in bytes)
+        const MIN_UPLOAD_SIZE: usize = 1; // 1 byte minimum
+        const MAX_UPLOAD_SIZE: usize = 1 * 1024 * 1024; // 10 MB maximum
+
+        if let Err(e) = std::fs::create_dir_all(upload_directory) {
+            return default_500_response(
+                Some(&format!("Could not create upload directory: {}", e))
+            );
         }
 
-        // Register listening sockets
-        for socket in &self.sockets {
-            let fd = socket.listener.as_raw_fd();
-            let mut event = kevent64_s {
-                ident: fd as u64,          // WHAT to monitor (the socket fd)
-                filter: EVFILT_READ,       // WHAT KIND of event (read events)
-                flags: EV_ADD | EV_ENABLE, // WHAT ACTION to take (register for read)
-                fflags: 0,                 // no filter-specific flags (none needed for EVFILT_READ)
-                data: 0,                   // no filter-specific data (none needed for EVFILT_READ)
-                udata: 0,                  // USER data (not used here)
-                ext: [0, 0],               // EXTENDED data (not used)
+        if !request.is_multipart() {
+            return default_400_response();
+        }
+
+        let parts = match request.multipart_parts() {
+            Some(p) => p,
+            None => return default_400_response()
+        };
+
+        for part in parts {
+            // Skip empty uploads
+            let filename = match &part.filename {
+                Some(f) if !f.is_empty() => f,
+                _ => continue, // no file selected, skip this part
             };
 
-            let result = unsafe {
-                kevent(
-                    kqueue,
-                    &mut event as *mut _ as *const _,
-                    1,
-                    std::ptr::null_mut(),
-                    0,
-                    std::ptr::null(),
-                )
-                };
-                 if result == -1 {
-                    panic!(
-                        "[!] Failed to register socket {} with kqueue: {}",
-                        fd,
-                        std::io::Error::last_os_error()
-                    );
+            let file_size = part.content.len();
+
+            if file_size < MIN_UPLOAD_SIZE {
+                return Response::new(400, "Bad Request")
+                    .with_body("Upload too small (minimum 1 byte)\n");
+            }
+
+            if file_size > MAX_UPLOAD_SIZE {
+                return Response::new(413, "Payload Too Large").with_body(format!(
+                    "File '{}' exceeds maximum size of {} bytes (got {} bytes)\n",
+                    filename, MAX_UPLOAD_SIZE, file_size
+                ));
+            }
+
+            // Build full path under upload_directory
+            let full_path = Path::new(upload_directory).join(filename);
+
+            if let Some(parent) = full_path.parent() {
+                if let Err(e) = std::fs::create_dir_all(parent) {
+                    eprintln!("Failed to create directories for {}: {}", full_path.display(), e);
+                    continue;
                 }
             }
 
-        // Prepare event buffer
-        let mut events = vec![
-            kevent64_s {
-                ident: 0,
-                filter: 0,
-                flags: 0,
-                fflags: 0,
-                data: 0,
-                udata: 0,
-                ext: [0, 0],
-            };
-            1024
-        ];
-
-        loop {
-            // Wait for events
-            let nev = unsafe {
-                kevent(
-                    kqueue,
-                    std::ptr::null(),
-                    0,
-                    events.as_mut_ptr() as *mut _,
-                    events.len() as i32,
-                    std::ptr::null(),
-                )
-            };
-
-            if nev < 0 {
-                eprintln!("[!] kqueue wait failed");
-                continue;
+            match std::fs::write(&full_path, &part.content) {
+                Ok(_) => println!("Saved file: {}", full_path.display()),
+                Err(e) => eprintln!("Failed to save {}: {}", full_path.display(), e),
             }
+        }
 
-            // Handle triggered events
-            for i in 0..nev as usize {
-                let ev = &events[i];
-                let fd = ev.ident as i32;
+        Response::new(200, "OK").with_body("File uploaded successfully\n")
+    }
 
-                // Is it a listening socket?
-                if let Some(socket) = self.sockets.iter().find(|s| s.listener.as_raw_fd() == fd) {
-                    let new_clients = socket.try_accept();
-                    for client in new_clients {
-                        let cfd = client.stream.as_raw_fd();
+    pub fn handle_delete(target_path: &Path) -> Response {
+        if !target_path.exists() {
+            return default_404_response();
+        }
 
-                        // Register client socket for READ
-                        let mut client_ev = kevent64_s {
-                            ident: cfd as u64,
-                            filter: EVFILT_READ,
-                            flags: EV_ADD | EV_ENABLE,
-                            fflags: 0,
-                            data: 0,
-                            udata: 0,
-                            ext: [0, 0],
-                        };
+        let result = if target_path.is_file() {
+            std::fs::remove_file(target_path)
+        } else if target_path.is_dir() {
+            std::fs::remove_dir_all(target_path)
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "Unknown file type"))
+        };
 
-                        unsafe {
-                            kevent(
-                                kqueue,
-                                &mut client_ev as *mut _ as *const _,
-                                1,
-                                std::ptr::null_mut(),
-                                0,
-                                std::ptr::null(),
-                            );
-                        }
-
-                        self.clients.push(client);
-                    }
-                } else {
-                    // Existing client
-                    if let Some(pos) = self.clients.iter().position(|c| c.stream.as_raw_fd() == fd)
-                    {
-                        let mut client = self.clients.swap_remove(pos);
-                        let keep = self.handle_client(&mut client).unwrap_or(false);
-
-                        if keep {
-                            self.clients.push(client);
-                        } else {
-                            // Deregister closed client
-                            let mut ev_del = kevent64_s {
-                                ident: fd as u64,
-                                filter: EVFILT_READ,
-                                flags: EV_DELETE,
-                                fflags: 0,
-                                data: 0,
-                                udata: 0,
-                                ext: [0, 0],
-                            };
-                            unsafe {
-                                kevent(
-                                    kqueue,
-                                    &mut ev_del as *mut _ as *const _,
-                                    1,
-                                    std::ptr::null_mut(),
-                                    0,
-                                    std::ptr::null(),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
+        match result {
+            Ok(_) => Response::new(200, "OK")
+                .with_body(format!("Deleted successfully: {}", target_path.display())),
+            Err(e) => default_500_response(
+                Some(&format!("Failed to delete {}: {}", target_path.display(), e))
+            ),
         }
     }
+
+    pub fn run(&mut self) {
+        run_loop(self);
+    }
 }
+

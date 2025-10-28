@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>make-your-game</title>
+  <link rel="icon" type="image/png" sizes="40x40" href="./static/piscine-js-igen-icon.png" />
+
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="./static/make-your-game.css">
+</head>
+
+<body>
+  <div id="fps-display"></div>
+  <audio id="start-menu-music" preload="auto" src="./static/sfx/OP/OP.mp3"loop></audio>
+  <audio id="game-over-music" preload="auto" src="./static/sfx/gameState/gameOver.mp3"></audio>
+  <audio id="success-music" preload="auto" src="./static/sfx/gameState/winComplete.mp3"></audio>
+  <!-- <audio id="hit-sound" preload="auto" src="./sfx/explosion.wav"></audio> -->
+  <audio id="bim-sound" preload="auto" src="./static/sfx/target/bim.wav"></audio>
+  <audio id="miss-sound" preload="auto" src="./static/sfx/target/miss.wav"></audio>
+  <audio id="menu-sound" preload="auto" src="./static/sfx/pauseMenu/pauseMenu.mp3"></audio>
+  <audio id="select-sound" preload="auto" src="./static/sfx/pauseMenu/OK.mp3"></audio>
+  <audio id="up-sound" preload="auto" src="./static/sfx/pauseMenu/popUp.mp3"></audio>
+
+
+  <svg id="svg-container" width="800" height="600" viewBox="0 0 800 600">
+    <!-- Define the dot pattern -->
+    <defs>
+      <pattern id="dot-pattern" patternUnits="userSpaceOnUse" width="30" height="30">
+        <rect x="0" y="0" width="30" height="30" fill="#333" />
+        <circle cx="15" cy="15" r="2" fill="darkgreen" />
+      </pattern>
+
+      <!-- Define the dirty metal gradient -->
+      <linearGradient id="metal-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style="stop-color:#111111;stop-opacity:1" />
+        <stop offset="50%" style="stop-color:#555555;stop-opacity:1" />
+        <stop offset="100%" style="stop-color:#111111;stop-opacity:1" />
+      </linearGradient>
+    </defs>
+
+    <!-- Game objects will be added here -->
+    <g id="bgLayer">
+      <rect x="0" y="0" width="100%" height="100%" fill="url(#dot-pattern)" />
+    </g>
+
+    <g id="targetsLayer" >
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g class="target-grp">
+        <circle class="target-circle"r="20" fill="red" />
+        <text class="target-text" text-anchor="middle" dominant-baseline="middle" font-size="30" fill="white" text-anchor="middle">A</text>
+      </g>
+      <g id="block-grp">
+        <!-- Apply the dirty metal gradient with blur effect -->
+        <rect width="150" height="150" fill="url(#metal-gradient)" stroke="#222222" stroke-width="5"/>
+        <!-- Add hexagons (bots) to the corners with a dark grey to simulate dirty metal -->
+        <circle r="10" fill="#555555" stroke="#353535" stroke-width="2"/>
+        <circle r="10" fill="#555555" stroke="#353535" stroke-width="2"/>
+        <circle r="10" fill="#555555" stroke="#353535" stroke-width="2"/>
+        <circle r="10" fill="#555555" stroke="#353535" stroke-width="2"/>
+      </g>
+    </g>
+
+    <g id="ui" >
+      <line id="yAxis" x1="400" y1="50" x2="400" y2="550" class="crosshair"></line>
+      <line id="xAxis" x1="0" y1="300" x2="800" y2="300" class="crosshair"></line>
+      <circle id="playerOrigin" cx="400" cy="300" r="20" class="crosshair"></circle>
+      <text id="feedback-display" x="50%" y="540" class="feedback-display">MISS!</text>
+      <rect x="0" y="0" width="100%" height="50" fill="dark" />
+      <rect id="lower-display" x="0" y="550" width="100%" height="50" fill="dark" />
+      <text id="score-display" x="10" y="35" font-size="30" fill="limegreen">000000</text>
+      <text id="combo-display" x="150" y="35" font-size="25" fill="limegreen">COMBO 0</text>
+      <text id="timer" x="50%" y="40" text-anchor="middle" font-size="40" fill="red"></text>
+      <text id="bulletCase" x="795" y="38" text-anchor="end" font-size="40" fill="grey">❚❚❚❚❚❚❚❚❚❚❚❚❚❚❚</text>
+      <text id="bulletCount" x="795" y="38" text-anchor="end" font-size="40" fill="limegreen"></text>
+      <text id="wordAim-display" x="50%" y="585" text-anchor="middle" font-size="30" fill="grey">let_there_be_words</text>
+      <text id="word-display" x="50%" y="585" text-anchor="middle" font-size="30" fill="red" style="white-space: pre">let_there_be_words</text>
+    </g>
+
+    <g id="menuLayer">
+      <g id="gameover-display" style= "display: none;">
+        <rect x="150" y="200" width="500" height="200" style="fill:black; opacity:0.8; stroke:red; stroke-width:3;"/>
+        <text x="410" y="300" font-size="80" text-anchor="middle" fill="red">FAILED!</text>
+        <rect x="240" y="320" width="320" height="50" fill="transparent" stroke="red"/>
+        <text x="400" y="350" font-size="20" text-anchor="middle" fill="red">Press Spacebar to Replay</text>
+      </g>
+      <g id="gamecomplete-display" style= "display: none;">
+        <rect x="125" y="200" width="550" height="200" style="fill:black; opacity:0.8; stroke:GREEN; stroke-width:3;"/>
+        <text x="410" y="300" font-size="80" text-anchor="middle" fill="GREEN">SUCCEEDED!</text>
+        <rect x="200" y="320" width="400" height="50" fill="transparent" stroke="green"/>
+        <text x="400" y="350" font-size="20" text-anchor="middle" fill="green">Press Spacebar for Next Level</text>
+      </g>
+      <g id="pause-menu" style= "display: none;">
+          <rect x="125" y="200" width="550" height="200" style="fill:black; opacity:0.8; stroke:grey; stroke-width:3;"/>
+          <text x="410" y="240" font-size="30" text-anchor="middle" fill="white">GAME PAUSED</text>
+          <rect x="360" y="260" width="100" height="30" fill="transparent" stroke="grey" class="pauseButton"></rect>
+          <text x="410" y="280" font-size="18" fill="grey" text-anchor="middle" class="pauseText">Resume</text>
+          <rect x="360" y="300" width="100" height="30" fill="transparent" stroke="grey" class="pauseButton"></rect>
+          <text x="410" y="320" font-size="18" fill="white" text-anchor="middle" class="pauseText">Restart</text>
+          <rect x="360" y="340" width="100" height="30" fill="transparent" stroke="grey" class="pauseButton"></rect>
+          <text x="410" y="360" font-size="18" fill="white" text-anchor="middle" class="pauseText">Quit</text>
+      </g>
+      <g id="start-menu" style= "display: none;"><rect x="0" y="0" width="800" height="600" fill=black></rect>
+          <!-- Background -->
+          <rect x="0" y="0" width="800" height="600" fill="rgba(0, 0, 0, 0.5)"></rect>
+          <!-- Title Area -->
+          <text x="300" y="154" font-size="40" fill="white" transform="rotate(-3.1 300 154)">piscine-js-igen</text>
+          <circle cx="250" cy="160" r="30" fill="red" class="target-flash"></circle>
+          <circle id="gameLogo" cx="250" cy="160" r="40" class="crosshair"></circle>
+          <line id="yLogo" x1="235" y1="80" x2="265" y2="220" class="crosshair"></line>
+          <line id="xLogo" x1="100" y1="165" x2="700" y2="135" class="crosshair"></line>    
+
+          <!-- Instructions Area -->
+          <text x="400" y="260" font-size="18" fill="white" text-anchor="middle"> Objective: </text>
+          <text x="400" y="290" font-size="14" fill="white" text-anchor="middle"> Complete words by catching flying letters.</text>
+          <text x="400" y="320" font-size="14" fill="white" text-anchor="middle"> Warning! Letters are flying fast, and time is ticking!</text>
+          <text x="240" y="430" font-size="10" fill="white" text-anchor="middle">
+            <tspan dy="0">Use arrow keys</tspan>
+            <tspan x="240" dy="15">to move crosshair</tspan>
+          </text>
+          <text x="400" y="430" font-size="10" fill="white" text-anchor="middle">
+            <tspan dy="0">Use spacebar</tspan>
+            <tspan x="400" dy="15">to shoot</tspan>
+          </text>
+          <text x="560" y="430" font-size="10" fill="white" text-anchor="middle">
+            <tspan dy="0">Press Esc</tspan>
+            <tspan x="560" dy="15">to pause</tspan>
+          </text>
+          <image href="https://img.icons8.com/wired/100/FFFFFF/arrow-keys.png" x="200" y="350" width="80" height="70" />
+          <image href="https://img.icons8.com/ios-filled/50/FFFFFF/space-key.png" x="360" y="370" width="80" height="50" />
+          <image href="https://img.icons8.com/ios/100/FFFFFF/esc.png" x="520" y="375" width="80" height="40" />
+          <text x="400" y="490" font-size="12" fill="white" text-anchor="middle"> Press spacebar to begin hunting!! </text>
+
+          <!-- Start Game Button Area -->
+          <rect x="300" y="500" width="200" height="50" fill="transparent" stroke="white" stroke-width="2" class="button"></rect>
+          <text x="400" y="530" font-size="20" fill="white" text-anchor="middle">Start Game</text>
+      </g>
+    </g>
+  </svg>
+
+  <svg id="hidden-template" style="display: none;">
+    <!-- This is a hidden template, you can define any SVG elements here -->
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+    <circle class="bullet-circle" cx="0" cy="-100" r="3" fill="dark" stroke="grey" stroke-width="1"/>
+  </svg>
+
+  <!-- Inline or optional: Init function might be inside the script -->
+  <script type="module">
+    import { main } from './static/main.js';
+    main();
+  </script>
+</body>
+</html>
