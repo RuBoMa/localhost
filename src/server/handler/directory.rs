@@ -40,13 +40,16 @@ pub fn generate_directory_listing(dir: &Path, base_url_path: &str, upload_allowe
 
     // Add parent directory link if not at root
     if let Some(_) = dir.parent() {
-        // Parent link should go one level up from current base_url_path
+        // Remove the trailing slash if it exists
+        let trimmed = base_url_path.trim_end_matches('/');
+
         // For example, if base_url_path = "/files/subdir", parent is "/files"
-        let parent_path = if let Some(pos) = base_url_path.rfind('/') {
+        let parent_path = if let Some(pos) = trimmed.rfind('/') {
             &base_url_path[..pos]
         } else {
             "/"
         };
+
         html.push_str(&format!(
             r#"<li class="parent"><a href="{}">📁 ..</a></li>"#,
             parent_path
