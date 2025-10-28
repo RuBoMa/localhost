@@ -1,25 +1,24 @@
 ﻿use std::collections::HashMap;
 use std::io::{self};
-use std::net::{SocketAddr};
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::Config;
-use crate::config::{ServerConfig, RouteConfig};
-use crate::ClientConnection;
-use crate::core::{Response, Request};
+use crate::config::{RouteConfig, ServerConfig};
+use crate::core::{Request, Response};
 use crate::server::default_html::{
-    default_400_response,
-    default_403_response,
-    default_404_response,
-    default_405_response,
-    default_500_response,
-    default_index_response,
+    default_400_response, default_403_response, default_404_response, default_405_response,
+    default_500_response, default_index_response,
+};
+use crate::server::handler::{
+    execute_handler, generate_directory_listing, resolve_cgi_interpreter, resolve_target_path,
+    serve_static_file, Admin,
 };
 use crate::server::match_route;
-use crate::server::handler::{execute_handler, serve_static_file, generate_directory_listing, resolve_target_path, Admin};
-use crate::server::ServerSocket;
 use crate::server::run_loop;
+use crate::server::ServerSocket;
+use crate::ClientConnection;
+use crate::Config;
 
 #[derive(Debug)]
 pub struct Server {
@@ -106,16 +105,26 @@ impl Server {
                 return generate_directory_listing(
                     &target_path,
                     route_prefix,
-                    route_cfg.upload_dir.is_some()
+                    route_cfg.upload_dir.is_some(),
                 );
             }
 
             if let Some(file) = route_cfg.filename.clone() {
-                return execute_handler(&target_path.join(file), request, config, client.local_addr.port());
+                return execute_handler(
+                    &target_path.join(file),
+                    request,
+                    config,
+                    client.local_addr.port(),
+                );
             }
 
             if target_path.join("index.html").exists() {
-                return execute_handler(&target_path.join("index.html"), request, config, client.local_addr.port());
+                return execute_handler(
+                    &target_path.join("index.html"),
+                    request,
+                    config,
+                    client.local_addr.port(),
+                );
             }
             return default_403_response();
         }
@@ -146,14 +155,14 @@ impl Server {
             if !is_authenticated {
                 if request.uri == "/login" {
                     if request.method.eq_ignore_ascii_case("POST") {
-                        // POST â†’ attempt login
+                        // POST attempt login
                         return self.admin.handle_login(request);
                     } else {
-                        // GET â†’ serve login page
+                        // GET serve login page
                         return serve_static_file(&root_dir.join("login.html"));
                     }
                 } else {
-                    // Any other admin route â†’ redirect to login
+                    // Any other admin route redirect to login
                     return Response::redirect("/login".to_string(), 302);
                 }
             }
@@ -175,23 +184,21 @@ impl Server {
             return default_405_response(Some(&allowed_methods));
         }
 
-        // Step 6: Upload handling (POST â†’ upload_dir)
-        if let Some(upload_dir) = &route_cfg.upload_dir {    
-            let full_target_path = resolve_target_path(
-                &request.uri,
-                &route_prefix,
-                root_dir, &upload_dir);
+        // Step 6: Upload handling (POST upload_dir)
+        if let Some(upload_dir) = &route_cfg.upload_dir {
+            let full_target_path =
+                resolve_target_path(&request.uri, &route_prefix, root_dir, &upload_dir);
 
             if request.method.eq_ignore_ascii_case("POST") {
                 return Server::handle_upload(request, &full_target_path);
             }
-            
+
             if request.method.eq_ignore_ascii_case("DELETE") {
                 return Server::handle_delete(&full_target_path);
             }
         }
-        
-        // Step 7: Directory handling (GET/HEAD â†’ directory or listing)
+
+        // Step 7: Directory handling (GET/HEAD directory or listing)
         if let Some(dir) = &route_cfg.directory {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
                 return default_405_response(Some("GET, HEAD"));
@@ -199,18 +206,34 @@ impl Server {
             let base_dir = root_dir.join(dir);
             let sub_path = &request.uri[route_prefix.len()..];
             let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
-            let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
+            let route_prefix = format!(
+                "{}/{}",
+                route_prefix.trim_end_matches('/'),
+                sub_path.trim_start_matches('/')
+            );
 
-            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix, request, config, client);
+            return self.handle_directory_request(
+                &base_dir,
+                route_cfg,
+                sub_path,
+                &route_prefix,
+                request,
+                config,
+                client,
+            );
         }
 
-        // Step 8: Static file handling (GET/HEAD â†’ filename)
+        // Step 8: Static file handling (GET/HEAD filename)
         if let Some(filename) = &route_cfg.filename {
-            if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return default_405_response(Some("GET, HEAD"));
+            let full_path = root_dir.join(filename);
+
+            // Only enforce for non-cgi files
+            if resolve_cgi_interpreter(&full_path, config).is_none() {
+                if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                    return default_405_response(Some("GET, HEAD"));
+                }
             }
 
-            let full_path = root_dir.join(filename);
             return execute_handler(&full_path, request, config, client.local_addr.port());
         }
 
@@ -260,9 +283,10 @@ impl Server {
         const MAX_UPLOAD_SIZE: usize = 1 * 1024 * 1024; // 10 MB maximum
 
         if let Err(e) = std::fs::create_dir_all(upload_directory) {
-            return default_500_response(
-                Some(&format!("Could not create upload directory: {}", e))
-            );
+            return default_500_response(Some(&format!(
+                "Could not create upload directory: {}",
+                e
+            )));
         }
 
         if !request.is_multipart() {
@@ -271,7 +295,7 @@ impl Server {
 
         let parts = match request.multipart_parts() {
             Some(p) => p,
-            None => return default_400_response()
+            None => return default_400_response(),
         };
 
         for part in parts {
@@ -300,7 +324,11 @@ impl Server {
 
             if let Some(parent) = full_path.parent() {
                 if let Err(e) = std::fs::create_dir_all(parent) {
-                    eprintln!("Failed to create directories for {}: {}", full_path.display(), e);
+                    eprintln!(
+                        "Failed to create directories for {}: {}",
+                        full_path.display(),
+                        e
+                    );
                     continue;
                 }
             }
@@ -324,15 +352,20 @@ impl Server {
         } else if target_path.is_dir() {
             std::fs::remove_dir_all(target_path)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Unknown file type"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unknown file type",
+            ))
         };
 
         match result {
             Ok(_) => Response::new(200, "OK")
                 .with_body(format!("Deleted successfully: {}", target_path.display())),
-            Err(e) => default_500_response(
-                Some(&format!("Failed to delete {}: {}", target_path.display(), e))
-            ),
+            Err(e) => default_500_response(Some(&format!(
+                "Failed to delete {}: {}",
+                target_path.display(),
+                e
+            ))),
         }
     }
 
@@ -340,4 +373,3 @@ impl Server {
         run_loop(self);
     }
 }
-
