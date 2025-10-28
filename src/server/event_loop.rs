@@ -1,6 +1,8 @@
 use std::os::fd::{RawFd, AsRawFd};
+use std::time::Instant;
 use libc::{kqueue, kevent, kevent64_s, EV_ADD, EV_DELETE, EV_ENABLE, EVFILT_READ};
 use crate::server::Server;
+use crate::core::Response;
 
 /// Create a new kqueue descriptor
 pub fn create_kqueue() -> RawFd {
@@ -58,7 +60,7 @@ pub fn process_event(server: &mut Server, kqueue: RawFd, ev: &kevent64_s) {
     // 1. Accept new connections if this is a listener socket
     if let Some(socket) = server.sockets.iter().find(|s| s.listener.as_raw_fd() == fd) {
         let new_clients = socket.try_accept();
-        for mut client in new_clients {
+        for client in new_clients {
             let cfd = client.stream.as_raw_fd();
             if let Err(e) = register_event(kqueue, cfd, EVFILT_READ, EV_ADD | EV_ENABLE) {
                 eprintln!("[!] Failed to register client {}: {}", cfd, e);
@@ -82,6 +84,30 @@ pub fn process_event(server: &mut Server, kqueue: RawFd, ev: &kevent64_s) {
     }
 }
 
+/// Checks for clients that have been idle longer than server.client_timeout and closes them.
+fn cleanup_idle_clients(server: &mut Server) {
+    let now = Instant::now();
+    server.clients.retain_mut(|client| {
+        if let Some(last_req) = client.request_at {
+            if now.duration_since(last_req) > server.client_timeout {
+                eprintln!("Closing client due to request timeout: {}", client.peer_addr);
+
+                // Build 408 response
+                let response = Response::new(408, "Request Timeout")
+                    .with_body("Your request timed out.\n");
+
+                // Attempt to send it
+                let _ = client.send_response(response);
+
+                // Close the connection
+                let _ = client.stream.shutdown(std::net::Shutdown::Both);
+                return false;
+            }
+        }
+        true
+    });
+}
+
 /// The main server event loop
 pub fn run_loop(server: &mut Server) {
     let kqueue = create_kqueue();
@@ -101,6 +127,12 @@ pub fn run_loop(server: &mut Server) {
     ];
 
     loop {
+        // Timeout for kevent: 100ms
+        let timeout = libc::timespec {
+            tv_sec: 0,
+            tv_nsec: 100_000_000, // 100ms
+        };
+
         let nev = unsafe {
             kevent(
                 kqueue,
@@ -108,7 +140,7 @@ pub fn run_loop(server: &mut Server) {
                 0,
                 events.as_mut_ptr() as *mut _,
                 events.len() as i32,
-                std::ptr::null(),
+                &timeout as *const _,
             )
         };
 
@@ -120,5 +152,8 @@ pub fn run_loop(server: &mut Server) {
         for i in 0..nev as usize {
             process_event(server, kqueue, &events[i]);
         }
+
+        // Periodically check for idle clients
+        cleanup_idle_clients(server);
     }
 }

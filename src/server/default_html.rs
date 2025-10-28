@@ -12,13 +12,7 @@ pub fn default_index_response(routes: &HashMap<String, RouteConfig>) -> Response
          <head>\
            <meta charset=\"utf-8\">\
            <title>Server Index</title>\
-           <style>\
-             body { font-family: sans-serif; margin: 2rem; }\
-             h1 { margin-bottom: 1rem; }\
-             ul { list-style: none; padding: 0; }\
-             li { margin: 0.5rem 0; }\
-             code { background: #f0f0f0; padding: 0.2rem 0.4rem; border-radius: 4px; }\
-           </style>\
+           <link rel=\"stylesheet\" type=\"text/css\" href=\"/static/style.css\">\
          </head>\
          <body>\
            <h1>Configured Routes</h1>\
@@ -42,8 +36,8 @@ pub fn default_index_response(routes: &HashMap<String, RouteConfig>) -> Response
                 "unknown"
             };
             body.push_str(&format!(
-                "<li><code>{}</code> &mdash; {}</li>",
-                route, description
+                "<li><code><a href={}>{}</a></code> &mdash; {}</li>",
+                route, route, description
             ));
         }
     }

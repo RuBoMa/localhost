@@ -1,4 +1,4 @@
-client_timeout_secs = 120
+client_timeout_secs = 30
 
 [[servers]]
 server_address = "127.0.0.1"
@@ -55,16 +55,20 @@ server_name = "public"
 root = "root"
 admin_access = false
 
-[servers.routes."/"]
-methods = ["GET"]
+  [servers.routes."/"]
+  methods = ["GET"]
 
-[servers.routes."/piscine-js"]
-filename = "./site/index.html"
-methods = ["GET"]
+  [servers.routes."/piscine-js"]
+  filename = "./site/index.html"
+  methods = ["GET"]
 
-[servers.routes."/static"]
-directory = "./site/static"
-methods = ["GET"]
+  [servers.routes."/static"]
+  directory = "./site/static"
+  methods = ["GET"]
+
+  [servers.routes."/tetris"]
+  directory = "./site2"
+  methods = ["GET"]
 
 [admin]
 username = "admin"

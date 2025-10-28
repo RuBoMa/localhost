@@ -137,12 +137,12 @@ impl Server {
         };
 
         // Step 2: Resolve configuration based on Host header
-        let host_header = request.headers.get("Host").map(|s| s.as_str());
+        let host_header = request.headers.get("host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
         let root_dir = Path::new(&config.root);
 
         // Step 2.5: Check admin access requirement
-        if socket.requires_admin_auth() {
+        if config.admin_access {
             let is_authenticated = self.admin.validate_request(request);
 
             // If not authenticated
@@ -200,11 +200,15 @@ impl Server {
             let base_dir = root_dir.join(dir);
             let sub_path = &request.uri[route_prefix.len()..];
             let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
-            let route_prefix = format!(
-                "{}/{}",
-                route_prefix.trim_end_matches('/'),
-                sub_path.trim_start_matches('/')
-            );
+            
+            let full_path = base_dir.join(sub_path.trim_start_matches('/'));
+            if full_path.is_dir() && !request.uri.ends_with('/') {
+                let location = format!("{}/", request.uri);
+                return Response::new(301, "Moved Permanently")
+                    .header("Location", &location);
+            }
+
+            let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
 
             return self.handle_directory_request(
                 &base_dir,
@@ -238,16 +242,15 @@ impl Server {
                 return Ok(false); // Tcp will close on drop
             }
             Ok(_) => {
-                if let Some((request, consumed)) = client.parse_request() {
+                if let Some(request) = client.parse_request() {
                     let response = self.handle_request(&request, &client);
 
                     client.send_response(response)?;
-                    client.buffer.drain(..consumed);
 
                     // Check if client wants to close
                     let close_connection = request
                         .headers
-                        .get("Connection")
+                        .get("connection")
                         .map(|v| v.eq_ignore_ascii_case("close"))
                         .unwrap_or(false);
 

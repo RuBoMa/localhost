@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::{fs, path::Path};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -43,6 +43,8 @@ fn default_timeout_secs() -> u64 {
 
 impl Config {
     pub fn validate(&self) -> Result<(), String> {
+        let mut seen_servers: HashSet<(u16, String)> = HashSet::new();
+
         for server in &self.servers {
             if server.ports.is_empty() {
                 return Err(format!("Server at {} has no ports", server.server_address));
@@ -58,7 +60,28 @@ impl Config {
             if !Path::new(&server.root).is_dir() {
                 return Err(format!("Root directory '{}' does not exist", server.root));
             }
-            
+
+            for &port in &server.ports {
+                // Empty string for nameless server
+                let name = server.server_name.clone().unwrap_or_default();
+
+                let key = (port, name.clone());
+
+                if !seen_servers.insert(key.clone()) {
+                    if name.is_empty() {
+                        return Err(format!(
+                            "Duplicate nameless server configured on port {}",
+                            port
+                        ));
+                    } else {
+                        return Err(format!(
+                            "Duplicate server name '{}' configured on port {}",
+                            name, port
+                        ));
+                    }
+                }
+            }
+
             for (route, cfg) in &server.routes {
                 if !route.starts_with("/") {
                     eprintln!("Warning: route '{}' should start with '/'", route);
@@ -89,7 +112,7 @@ impl Config {
                 }
 
                 // Check directory existence
-                if let Some(directory) = &cfg.directory {                
+                if let Some(directory) = &cfg.directory {
                     if route == "/" {
                         return Err("Route '/' cannot serve a directory — use a subpath like '/files' instead.".to_string());
                     }
