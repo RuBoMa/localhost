@@ -1,8 +1,9 @@
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use crate::config::AdminConfig;
+use crate::config::{AdminConfig, ServerConfig};
 use crate::core::{Request, Response};
+use crate::server::error_response_from_config;
 
 /// Represents the active administrator session and credentials.
 #[derive(Debug, Clone)]
@@ -65,7 +66,7 @@ impl Admin {
         self.session_created = None;
     }
 
-    pub fn handle_login(&mut self, request: &Request) -> Response {
+    pub fn handle_login(&mut self, request: &Request, config: &ServerConfig) -> Response {
         let form = request.parse_form(); // parses POST form data
         let username = form.get("username").map(|s| s.as_str()).unwrap_or("");
         let password = form.get("password").map(|s| s.as_str()).unwrap_or("");
@@ -79,7 +80,6 @@ impl Admin {
         }
 
         // Invalid credentials → show login page
-        Response::new(401, "Unauthorized")
-            .with_body("<h1>Invalid username or password</h1>")
+        error_response_from_config(401, config)
     }
 }

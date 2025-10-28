@@ -7,13 +7,29 @@ use crate::server::handler::utils::{guess_mime_type, default_reason_phrase};
 /// Return an error response using a custom page if configured under `root/errors`.
 pub fn error_response_from_config(status: u16, config: &ServerConfig) -> Response {
     if let Some(err_cfg) = config.errors.get(&status.to_string()) {
-        let path = Path::new(&config.root).join("errors").join(&err_cfg.filename);
-        if let Ok(bytes) = fs::read(&path) {
-            let reason = default_reason_phrase(status);
-            let mime = guess_mime_type(path.to_string_lossy().as_ref());
-            return Response::new(status, reason)
-                .header("Content-Type", mime)
-                .with_body(bytes);
+        if let Some(filename) = &err_cfg.filename {
+            let path = Path::new(&config.root).join("errors").join(filename);
+            match fs::read(&path) {
+                Ok(bytes) => {
+                    let reason = default_reason_phrase(status);
+                    let mime = guess_mime_type(path.to_string_lossy().as_ref());
+                    return Response::new(status, reason)
+                        .header("Content-Type", mime)
+                        .with_body(bytes);
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Warning: failed to read custom error page '{}': {}",
+                        path.display(),
+                        e
+                    );
+                }
+            }
+        } else {
+            eprintln!(
+                "Warning: custom error {} configured without a filename; using default response",
+                status
+            );
         }
     }
     // Fallback if no default error page has been defined

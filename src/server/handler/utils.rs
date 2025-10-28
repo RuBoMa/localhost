@@ -55,7 +55,7 @@ pub fn set_cgi_env(
     cmd.env("GATEWAY_INTERFACE", "CGI/1.1");
     cmd.env("REQUEST_METHOD", &request.method);
     cmd.env("QUERY_STRING", query);
-    cmd.env("SERVER_PROTOCOL", &request.version);
+    cmd.env("SERVER_PROTOCOL", &request._version);
     cmd.env("SCRIPT_NAME", uri_path);
     cmd.env("SCRIPT_FILENAME", script_path.as_os_str());
 
@@ -67,14 +67,11 @@ pub fn set_cgi_env(
     cmd.env("SERVER_PORT", host_port.to_string());
     cmd.env("DOCUMENT_ROOT", &config.root);
 
-    if let Some(ct) = request.headers.get("Content-Type") {
+    if let Some(ct) = request.headers.get("content-type") {
         cmd.env("CONTENT_TYPE", ct);
     }
-    if !request.body.is_empty() {
-        cmd.env("CONTENT_LENGTH", request.body.len().to_string());
-    } else if let Some(cl) = request.headers.get("Content-Length") {
-        cmd.env("CONTENT_LENGTH", cl);
-    }
+    // Always reflect parsed body length for CGI
+    cmd.env("CONTENT_LENGTH", request.body.len().to_string());
 
     for (k, v) in &request.headers {
         let mut up = String::with_capacity(k.len() + 5);
@@ -163,14 +160,10 @@ pub fn check_name_and_port(
     local_port: u16,
 ) -> Result<(String, u16), Response> {
     // Check that host header exists
-    let host = match request.headers.get("Host") {
+    let host = match request.headers.get("host") {
         Some(h) if !h.trim().is_empty() => h.trim(),
         _ => {
-            return Err(
-                Response::new(400, "Bad Request")
-                    .header("Content-Type", "text/plain; charset=utf-8")
-                    .with_body("Missing Host header"),
-            );
+            return Err(error_response_from_config(400, config));
         }
     };
 
@@ -180,42 +173,26 @@ pub fn check_name_and_port(
             let p = match port_str.parse::<u16>() {
                 Ok(v) => v,
                 Err(_) => {
-                    return Err(
-                        Response::new(400, "Bad Request")
-                            .header("Content-Type", "text/plain; charset=utf-8")
-                            .with_body("Invalid Host port"),
-                    );
+                    return Err(error_response_from_config(400, config));
                 }
             };
             (name, p)
         }
         _ => {
-            return Err(
-                Response::new(400, "Bad Request")
-                    .header("Content-Type", "text/plain; charset=utf-8")
-                    .with_body("Host must include explicit port"),
-            );
+            return Err(error_response_from_config(400, config));
         }
     };
 
     // Enforce server name if configured
     if let Some(cfg_name) = &config.server_name {
         if !server_name.eq_ignore_ascii_case(cfg_name) {
-            return Err(
-                Response::new(400, "Bad Request")
-                    .header("Content-Type", "text/plain; charset=utf-8")
-                    .with_body("Host name does not match server config"),
-            );
+            return Err(error_response_from_config(400, config));
         }
     }
 
     // Enforce port matches socket's local port
     if host_port != local_port {
-        return Err(
-            Response::new(400, "Bad Request")
-                .header("Content-Type", "text/plain; charset=utf-8")
-                .with_body("Host port does not match listening port"),
-        );
+        return Err(error_response_from_config(400, config));
     }
 
     Ok((server_name.to_string(), host_port))

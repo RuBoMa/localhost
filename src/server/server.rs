@@ -11,7 +11,7 @@ use crate::core::{Response, Request};
 use crate::server::default_html::{default_index_response};
 use crate::server::match_route;
 use crate::server::error_response_from_config;
-use crate::server::handler::{Admin, serve_static_file, generate_directory_listing, resolve_target_path};
+use crate::server::handler::{Admin, execute_handler, serve_static_file, generate_directory_listing, resolve_target_path};
 use crate::server::ServerSocket;
 use crate::server::run_loop;
 
@@ -75,7 +75,9 @@ impl Server {
         route_cfg: &RouteConfig,
         request_subpath: &str,
         route_prefix: &str,
+        request: &Request,
         config: &ServerConfig,
+        client: &ClientConnection,
     ) -> Response {
         // Full target path is base_path + request_subpath
         let target_path = root_dir.join(request_subpath.trim_start_matches('/'));
@@ -90,7 +92,7 @@ impl Server {
         }
 
         if target_path.is_file() {
-            return serve_static_file(&target_path, config);
+            return execute_handler(&target_path, request, config, client.local_addr.port());
         }
 
         if target_path.is_dir() {
@@ -103,11 +105,13 @@ impl Server {
             }
 
             if let Some(file) = route_cfg.filename.clone() {
-                return serve_static_file(&target_path.join(file), config);
+                let file_path = target_path.join(file);
+                return execute_handler(&file_path, request, config, client.local_addr.port());
             }
 
-            if target_path.join("index.html").exists() {
-                return serve_static_file(&target_path.join("index.html"), config);
+            let index_path = target_path.join("index.html");
+            if index_path.exists() {
+                return execute_handler(&index_path, request, config, client.local_addr.port());
             }
             return error_response_from_config(403, config);
         }
@@ -198,7 +202,7 @@ impl Server {
             let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
             let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
 
-            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix, config);
+            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix, request, config, client);
         }
 
         // Step 8: Static file handling (GET/HEAD → filename)
@@ -208,7 +212,7 @@ impl Server {
             }
 
             let full_path = root_dir.join(filename);
-            return serve_static_file(&full_path, config);
+            return execute_handler(&full_path, request, config, client.local_addr.port());
         }
 
         // Step 9: Misconfiguration. serve default index
@@ -321,7 +325,7 @@ impl Server {
         match result {
             Ok(_) => Response::new(200, "OK")
                 .with_body(format!("Deleted successfully: {}", target_path.display())),
-            Err(e) => error_response_from_config(500, config)
+            Err(_) => error_response_from_config(500, config)
         }
     }
 
