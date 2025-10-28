@@ -1,25 +1,25 @@
-﻿use std::path::Path;
-use std::process::Command;
-use crate::core::{Request, Response};
 use crate::config::ServerConfig;
+use crate::core::{Request, Response};
+use std::path::Path;
+use std::process::Command;
 use crate::server::error_response_from_config;
 
 /// Very basic MIME type guessing based on file extension.
 /// Extend as needed for your use case.
-pub fn guess_mime_type(filename: &str) -> &'static str {
+pub fn guess_mime_type(filename: &str) -> &str {
     if let Some(ext) = filename.rsplit('.').next() {
         match ext {
             "html" => "text/html",
-            "htm"  => "text/html",
-            "css"  => "text/css",
-            "js"   => "application/javascript",
+            "htm" => "text/html",
+            "css" => "text/css",
+            "js" => "application/javascript",
             "json" => "application/json",
-            "png"  => "image/png",
+            "png" => "image/png",
             "jpg" | "jpeg" => "image/jpeg",
-            "gif"  => "image/gif",
-            "svg"  => "image/svg+xml",
-            "txt"  => "text/plain",
-            "ico"  => "image/x-icon",
+            "gif" => "image/gif",
+            "svg" => "image/svg+xml",
+            "txt" => "text/plain",
+            "ico" => "image/x-icon",
             "wasm" => "application/wasm",
             _ => "application/octet-stream", // unknown extension
         }
@@ -70,7 +70,7 @@ pub fn set_cgi_env(
     if let Some(ct) = request.headers.get("content-type") {
         cmd.env("CONTENT_TYPE", ct);
     }
-    // Always reflect parsed body length for CGI
+    // Always reflect the parsed body length for CGI
     cmd.env("CONTENT_LENGTH", request.body.len().to_string());
 
     for (k, v) in &request.headers {
@@ -92,6 +92,35 @@ pub fn split_uri(uri: &str) -> (&str, &str) {
         (path, query)
     } else {
         (uri, "")
+    }
+}
+
+/// Find pattern in buffer
+pub fn find_sequence(buffer: &[u8], pattern: &[u8]) -> Option<usize> {
+    buffer.windows(pattern.len()).position(|w| w == pattern)
+}
+
+pub fn default_reason_phrase(code: u16) -> &'static str {
+    match code {
+        200 => "OK",
+        201 => "Created",
+        202 => "Accepted",
+        204 => "No Content",
+        301 => "Moved Permanently",
+        302 => "Found",
+        304 => "Not Modified",
+        400 => "Bad Request",
+        401 => "Unauthorized",
+        403 => "Forbidden",
+        404 => "Not Found",
+        405 => "Method Not Allowed",
+        408 => "Request Timeout",
+        500 => "Internal Server Error",
+        501 => "Not Implemented",
+        502 => "Bad Gateway",
+        503 => "Service Unavailable",
+        504 => "Gateway Timeout",
+        _ => "OK",
     }
 }
 
@@ -149,11 +178,6 @@ pub fn parse_cgi_output(output: &[u8], config: &ServerConfig) -> Response {
     }
 }
 
-/// Find pattern in buffer
-pub fn find_sequence(buffer: &[u8], pattern: &[u8]) -> Option<usize> {
-    buffer.windows(pattern.len()).position(|w| w == pattern)
-}
-
 pub fn check_name_and_port(
     request: &Request,
     config: &ServerConfig,
@@ -196,28 +220,4 @@ pub fn check_name_and_port(
     }
 
     Ok((server_name.to_string(), host_port))
-}
-
-pub fn default_reason_phrase(code: u16) -> &'static str {
-    match code {
-        200 => "OK",
-        201 => "Created",
-        202 => "Accepted",
-        204 => "No Content",
-        301 => "Moved Permanently",
-        302 => "Found",
-        304 => "Not Modified",
-        400 => "Bad Request",
-        401 => "Unauthorized",
-        403 => "Forbidden",
-        404 => "Not Found",
-        405 => "Method Not Allowed",
-        408 => "Request Timeout",
-        500 => "Internal Server Error",
-        501 => "Not Implemented",
-        502 => "Bad Gateway",
-        503 => "Service Unavailable",
-        504 => "Gateway Timeout",
-        _ => "OK",
-    }
 }

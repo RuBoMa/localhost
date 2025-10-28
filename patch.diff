@@ -1,0 +1,28 @@
+*** Begin Patch
+*** Update File: src/server/handler/mod.rs
+@@
+-mod handlers;
+-mod utils;
+-mod serve_cgi;
+-mod serve_static;
+-
+-pub use handlers::execute_handler;
+-pub use serve_static::serve_static_file;
+-mod directory;
+-mod auth;
+-
+-pub use directory::{generate_directory_listing, resolve_target_path};
+-pub use auth::Admin;
++mod handlers;
++mod utils;
++mod serve_cgi;
++mod serve_static;
++
++pub use handlers::execute_handler;
++pub use serve_static::serve_static_file as serve_static;
++mod directory;
++mod auth;
++
++pub use directory::{generate_directory_listing, resolve_target_path};
++pub use auth::Admin;
+*** End Patch

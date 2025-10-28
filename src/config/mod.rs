@@ -18,10 +18,10 @@ pub struct ServerConfig {
     pub server_address: String,
     pub ports: Vec<u16>,
     pub server_name: Option<String>,
-    
+
     #[serde(default)]
     pub root: String,
-    
+
     #[serde(default)]
     pub routes: HashMap<String, RouteConfig>,
 

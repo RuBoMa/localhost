@@ -1,47 +1,56 @@
-use std::collections::HashMap;
-
-use crate::config::RouteConfig;
+use crate::server::ServerSocket;
 use crate::core::Response;
-use crate::server::handler::utils::default_reason_phrase;
+use crate::server::handler::default_reason_phrase;
 
-/// Render a simple default index listing configured routes.
-pub fn default_index_response(routes: &HashMap<String, RouteConfig>) -> Response {
-    let mut body = String::from(
-        "<!DOCTYPE html>\
-         <html lang=\"en\">\
-         <head>\
-           <meta charset=\"utf-8\">\
-           <title>Server Index</title>\
-           <link rel=\"stylesheet\" type=\"text/css\" href=\"/static/style.css\">\
-         </head>\
-         <body>\
-           <h1>Configured Routes</h1>\
-           <p>The requested resource is not configured. Available routes:</p>\
-           <ul>",
-    );
+pub fn default_index_response(sockets: &Vec<ServerSocket>) -> Response {
+    let mut body = String::from(r#"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Registered Servers & Routes</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
+</head>
+<body>
+    <h1>Registered Servers & Routes</h1>
+"#);
 
-    if routes.is_empty() {
-        body.push_str("<li><em>No routes configured</em></li>");
-    } else {
-        for (route, cfg) in routes {
-            let methods = if let Some(methods) = &cfg.methods {
-                methods.join(", ")
-            } else {
-                "ALL".to_string()
-            };
-        
+    for socket in sockets {
+        for config in &socket.configs {
+            let server_name = config
+                .server_name
+                .as_deref()
+                .unwrap_or("(no name)");
+
             body.push_str(&format!(
-                "<li><code>[{}] - <a href={}>{}</a></code></li>",
-                methods, route, route
+                "<h2>Server: {} on {}:{}</h2>\n<ul>\n",
+                server_name,
+                socket.addr.ip(),
+                socket.addr.port()
             ));
+
+            for (route, cfg) in &config.routes {
+                let methods = if let Some(methods) = &cfg.methods {
+                    methods.join(", ")
+                } else {
+                    "ALL".to_string()
+                };
+
+                body.push_str(&format!(
+                    r#"  <li><span class="route-methods">[{methods}]</span> <a href="http://{}:{}{}">{}</a></li>"#,
+                    socket.addr.ip(),
+                    socket.addr.port(),
+                    route,
+                    route,
+                    methods = methods
+                ));
+                body.push('\n');
+            }
+
+            body.push_str("</ul>\n");
         }
     }
 
-    body.push_str(
-        "  </ul>\
-         </body>\
-         </html>",
-    );
+    body.push_str("</body>\n</html>");
 
     Response::new(200, default_reason_phrase(200))
         .header("Content-Type", "text/html; charset=utf-8")
