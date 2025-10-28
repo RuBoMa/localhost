@@ -242,7 +242,7 @@ impl Server {
         }
 
         // Step 9: Misconfiguration. serve default index
-        default_index_response(&config.routes)
+        default_index_response(&self.sockets)
     }
 
     pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
