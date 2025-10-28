@@ -11,7 +11,7 @@ A high-performance HTTP/1.1 server built with Rust, featuring event-driven I/O u
 **Multipart form uploads** - RFC 2388 compliant file upload handling  
 **Flexible routing** - File serving, directory listing, redirects, and upload handlers  
 **TOML configuration** - Simple, readable server configuration  
-**Connection cleanup** - Proper deregistration of closed sockets  
+**Connection cleanup** - Proper deregistration of closed sockets
 
 ## Quick Start
 
@@ -34,6 +34,7 @@ cargo run --release
 ```
 
 Expected output:
+
 ```
 [+] Bound to 127.0.0.1:8080
 [+] Bound to 127.0.0.1:8081
@@ -75,13 +76,13 @@ upload_dir = "uploads"
 
 ### Configuration Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `server_address` | Bind address | `127.0.0.1` |
-| `ports` | Listen ports (array) | `[8080]` |
-| `server_name` | Virtual host name (Host header match) | `localhost` |
-| `root` | Document root directory | `./routes` |
-| `client_timeout_secs` | Idle connection timeout | `30` |
+| Option                | Description                           | Default     |
+| --------------------- | ------------------------------------- | ----------- |
+| `server_address`      | Bind address                          | `127.0.0.1` |
+| `ports`               | Listen ports (array)                  | `[8080]`    |
+| `server_name`         | Virtual host name (Host header match) | `localhost` |
+| `root`                | Document root directory               | `./routes`  |
+| `client_timeout_secs` | Idle connection timeout               | `30`        |
 
 ## Usage Examples
 
@@ -127,6 +128,49 @@ type = "file"
 file = "files/"  # Trailing slash for directory listing
 ```
 
+### CGI Support
+
+```toml
+[servers.cgi_handlers]
+".py" = "python3"   # Map .py files to Python 3 interpreter
+".pl" = "perl"      # Optional: map .pl files to Perl
+```
+
+The server can execute CGI scripts based on file extension configuration. This allows dynamic content generation (for example, using `.py` scripts) alongside static file serving without changing existing route behavior.
+
+#### How It Works
+
+1. **Route resolution** – When a request matches a route pointing to a file, the server checks the extension.
+2. **Interpreter detection** – The configured interpreter for the file type is invoked.
+3. **Environment setup** – Standard CGI environment variables are set, including:
+
+   - `REQUEST_METHOD`
+   - `QUERY_STRING`
+   - `CONTENT_LENGTH`
+   - `SERVER_NAME` / `SERVER_PORT` (validated against the Host header)
+
+4. **Body forwarding** – The request body is piped into the CGI process stdin.
+5. **Output parsing** – CGI stdout is read and parsed into HTTP headers + body, then sent back to the client.
+
+#### Example Usage
+
+```bash
+curl --resolve public:8081:127.0.0.1 \
+      -X POST \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      --data "name=Johannes&age=30" \
+      http://public:8081/hello
+```
+
+- Executes `hello.py` with the request body available in `stdin`.
+- Returns CGI-generated headers and content to the browser or client.
+
+#### Notes
+
+- The server validates that the `Host` header matches the configured `server_name` and port.
+- If no interpreter is configured for a file extension, a `502 Bad Gateway` is returned.
+- Handles both chunked and unchunked requests automatically.
+
 ## Architecture
 
 ### Event Loop Model
@@ -148,7 +192,6 @@ The server uses `kqueue` (kernel event queue) for efficient async I/O:
     Create      Parse      Deregister
     connection  & route     socket
 ```
-
 
 ### Request Handling Flow
 
@@ -190,6 +233,7 @@ Alternative on Linux: `epoll`
 Alternative on Windows: `IOCP`
 
 ### Unsafe FFI Justification
+
 (Foreign Function Interface)
 This codebase uses `unsafe` blocks **only** for C FFI to `libc`:
 
@@ -206,6 +250,7 @@ unsafe { kevent(...) }  // Kernel call; must pass C-compatible pointers
 ---
 
 Server responses:
+
 - **413 Payload Too Large**: If file exceeds limit
 - **400 Bad Request**: If multipart parsing fails
 - **200 OK**: If upload succeeds
@@ -213,6 +258,7 @@ Server responses:
 ### Supported Upload Methods
 
 **Single file (curl):**
+
 ```bash
 curl -F "file=@myfile.txt" http://127.0.0.1:8080/upload
 ```
@@ -220,6 +266,7 @@ curl -F "file=@myfile.txt" http://127.0.0.1:8080/upload
 ### File Storage
 
 Uploaded files are saved to the configured directory with original filenames:
+
 ```
 uploads/
   ├─ document.pdf
@@ -251,6 +298,7 @@ siege -c50 -t30S http://127.0.0.1:8080/
 ### Full Testing Guide
 
 See **[MEMORY_TESTING.md](./MEMORY_TESTING.md)** for 7 methods including:
+
 - Real-time `top` monitoring
 - `watch` command loops
 - Siege load profiles
@@ -266,21 +314,25 @@ See **[MEMORY_TESTING.md](./MEMORY_TESTING.md)** for 7 methods including:
 ### Load Testing
 
 **Light test (initial check):**
+
 ```bash
 siege -c10 -t15S http://127.0.0.1:8080/
 ```
 
 **Medium load (realistic):**
+
 ```bash
 siege -c50 -t30S http://127.0.0.1:8080/
 ```
 
 **Heavy benchmark:**
+
 ```bash
 siege -c100 -t60S http://127.0.0.1:8080/
 ```
 
 **Aggressive (stress test):**
+
 ```bash
 siege -b http://127.0.0.1:8080/  # Press Ctrl+C to stop
 ```
