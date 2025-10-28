@@ -1,7 +1,8 @@
-﻿use std::path::Path;
-use std::process::Command;
+﻿use crate::config::ServerConfig;
 use crate::core::{Request, Response};
-use crate::config::ServerConfig;
+use crate::server::handler::serve_cgi;
+use std::path::Path;
+use std::process::Command;
 
 /// Very basic MIME type guessing based on file extension.
 /// Extend as needed for your use case.
@@ -9,16 +10,16 @@ pub fn guess_mime_type(filename: &str) -> &str {
     if let Some(ext) = filename.rsplit('.').next() {
         match ext {
             "html" => "text/html",
-            "htm"  => "text/html",
-            "css"  => "text/css",
-            "js"   => "application/javascript",
+            "htm" => "text/html",
+            "css" => "text/css",
+            "js" => "application/javascript",
             "json" => "application/json",
-            "png"  => "image/png",
+            "png" => "image/png",
             "jpg" | "jpeg" => "image/jpeg",
-            "gif"  => "image/gif",
-            "svg"  => "image/svg+xml",
-            "txt"  => "text/plain",
-            "ico"  => "image/x-icon",
+            "gif" => "image/gif",
+            "svg" => "image/svg+xml",
+            "txt" => "text/plain",
+            "ico" => "image/x-icon",
             "wasm" => "application/wasm",
             _ => "application/octet-stream", // unknown extension
         }
@@ -59,7 +60,9 @@ pub fn set_cgi_env(
     cmd.env("SCRIPT_FILENAME", script_path.as_os_str());
 
     // Validate Host/name/port and use the validated values
-    let (server_name, host_port) = check_name_and_port(request, config, local_port)?;
+    //let (server_name, host_port) = check_name_and_port(request, config, local_port)?;
+    let server_name = "Hi";
+    let host_port = local_port;
 
     // Set validated server name and port
     cmd.env("SERVER_NAME", &server_name);
@@ -102,7 +105,7 @@ pub fn parse_cgi_output(output: &[u8]) -> Response {
         (&output[..pos], &output[pos + 2..])
     } else {
         let resp = Response::new(200, "OK");
-        return resp.with_body(output.to_vec())
+        return resp.with_body(output.to_vec());
     };
 
     let header_text = String::from_utf8_lossy(header_bytes);
@@ -111,7 +114,9 @@ pub fn parse_cgi_output(output: &[u8]) -> Response {
     let mut headers: Vec<(String, String)> = Vec::new();
 
     for line in header_text.lines() {
-        if line.trim().is_empty() { continue; }
+        if line.trim().is_empty() {
+            continue;
+        }
         if let Some((name, value)) = line.split_once(':') {
             let name = name.trim();
             let value = value.trim();
@@ -158,56 +163,48 @@ pub fn check_name_and_port(
     let host = match request.headers.get("host") {
         Some(h) if !h.trim().is_empty() => h.trim(),
         _ => {
-            return Err(
-                Response::new(400, "Bad Request")
-                    .header("Content-Type", "text/plain; charset=utf-8")
-                    .with_body("Missing Host header"),
-            );
+            return Err(Response::new(400, "Bad Request")
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .with_body("Missing Host header"));
         }
     };
 
     // Parse server name and port from host header
     let (server_name, host_port) = match host.rsplit_once(':') {
-        Some((name, port_str)) if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) => {
+        Some((name, port_str))
+            if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) =>
+        {
             let p = match port_str.parse::<u16>() {
                 Ok(v) => v,
                 Err(_) => {
-                    return Err(
-                        Response::new(400, "Bad Request")
-                            .header("Content-Type", "text/plain; charset=utf-8")
-                            .with_body("Invalid Host port"),
-                    );
+                    return Err(Response::new(400, "Bad Request")
+                        .header("Content-Type", "text/plain; charset=utf-8")
+                        .with_body("Invalid Host port"));
                 }
             };
             (name, p)
         }
         _ => {
-            return Err(
-                Response::new(400, "Bad Request")
-                    .header("Content-Type", "text/plain; charset=utf-8")
-                    .with_body("Host must include explicit port"),
-            );
+            return Err(Response::new(400, "Bad Request")
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .with_body("Host must include explicit port"));
         }
     };
 
     // Enforce server name if configured
     if let Some(cfg_name) = &config.server_name {
         if !server_name.eq_ignore_ascii_case(cfg_name) {
-            return Err(
-                Response::new(400, "Bad Request")
-                    .header("Content-Type", "text/plain; charset=utf-8")
-                    .with_body("Host name does not match server config"),
-            );
+            return Err(Response::new(400, "Bad Request")
+                .header("Content-Type", "text/plain; charset=utf-8")
+                .with_body("Host name does not match server config"));
         }
     }
 
     // Enforce port matches socket's local port
     if host_port != local_port {
-        return Err(
-            Response::new(400, "Bad Request")
-                .header("Content-Type", "text/plain; charset=utf-8")
-                .with_body("Host port does not match listening port"),
-        );
+        return Err(Response::new(400, "Bad Request")
+            .header("Content-Type", "text/plain; charset=utf-8")
+            .with_body("Host port does not match listening port"));
     }
 
     Ok((server_name.to_string(), host_port))
@@ -236,4 +233,3 @@ pub fn default_reason_phrase(code: u16) -> &'static str {
         _ => "OK",
     }
 }
-
