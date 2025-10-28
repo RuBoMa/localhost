@@ -1,8 +1,8 @@
 use std::os::fd::{RawFd, AsRawFd};
 use std::time::Instant;
-use libc::{kqueue, kevent, kevent64_s, EV_ADD, EV_DELETE, EV_ENABLE, EVFILT_READ};
+use std::io;
+use libc::{kqueue, kevent, kevent64_s, EV_ADD, EV_DELETE, EV_ENABLE, EVFILT_READ, EVFILT_WRITE, EV_CLEAR};
 use crate::server::Server;
-use crate::core::Response;
 
 /// Create a new kqueue descriptor
 pub fn create_kqueue() -> RawFd {
@@ -43,11 +43,38 @@ pub fn register_event(kqueue: RawFd, fd: RawFd, filter: i16, flags: u16) -> std:
     }
 }
 
+/// Register a read event for a given fd
+pub fn register_read(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
+    register_event(kqueue, fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR)
+}
+
+/// Register a write event for a given fd
+pub fn register_write(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
+    register_event(kqueue, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR)
+}
+
+/// Deregister a read event
+pub fn deregister_read(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
+    register_event(kqueue, fd, EVFILT_READ, EV_DELETE)
+}
+
+/// Deregister a write event
+pub fn deregister_write(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
+    register_event(kqueue, fd, EVFILT_WRITE, EV_DELETE)
+}
+
+/// Deregister both read and write events
+pub fn deregister_all(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
+    let _ = deregister_read(kqueue, fd);
+    let _ = deregister_write(kqueue, fd);
+    Ok(())
+}
+
 /// Register all listening sockets for read events
 pub fn register_listeners(server: &Server, kqueue: RawFd) {
     for socket in &server.sockets {
         let fd = socket.listener.as_raw_fd();
-        if let Err(e) = register_event(kqueue, fd, EVFILT_READ, EV_ADD | EV_ENABLE) {
+        if let Err(e) = register_read(kqueue, fd) {
             panic!("[!] Failed to register listener {}: {}", fd, e);
         }
     }
@@ -62,7 +89,7 @@ pub fn process_event(server: &mut Server, kqueue: RawFd, ev: &kevent64_s) {
         let new_clients = socket.try_accept();
         for client in new_clients {
             let cfd = client.stream.as_raw_fd();
-            if let Err(e) = register_event(kqueue, cfd, EVFILT_READ, EV_ADD | EV_ENABLE) {
+            if let Err(e) = register_read(kqueue, cfd) {
                 eprintln!("[!] Failed to register client {}: {}", cfd, e);
                 continue;
             }
@@ -74,12 +101,37 @@ pub fn process_event(server: &mut Server, kqueue: RawFd, ev: &kevent64_s) {
     // 2. Handle existing client
     if let Some(pos) = server.clients.iter().position(|c| c.stream.as_raw_fd() == fd) {
         let mut client = server.clients.swap_remove(pos);
-        let keep = server.handle_client(&mut client).unwrap_or(false);
+
+        let keep = match ev.filter {
+            EVFILT_READ => server.handle_client_read(&mut client),
+            EVFILT_WRITE => server.handle_client_write(&mut client),
+            _ => Ok(true), // Ignore unknown filters
+        }.unwrap_or(false);
 
         if keep {
+            if client.has_pending_write() {
+                if !client.write_registered {
+                    let _ = register_write(kqueue, fd);
+                    client.write_registered = true;
+                }
+
+            } else if ev.filter == EVFILT_WRITE {
+                // Only deregister if this was a write event and we know it's drained.
+                let _ = deregister_write(kqueue, fd);
+                client.write_registered = false;
+
+                if client.should_close {
+                    println!("[*] Closing connection to {} (Connection: close)", client.peer_addr);
+                    let _ = client.stream.shutdown(std::net::Shutdown::Both);
+                    let _ = deregister_all(kqueue, fd);
+                    return;
+                }
+            }
             server.clients.push(client);
-        } else if let Err(e) = register_event(kqueue, fd, EVFILT_READ, EV_DELETE) {
-            eprintln!("[!] Failed to deregister {}: {}", fd, e);
+        } else {
+            println!("[*] Closing connection to {} (Connection: close)", client.peer_addr);
+            // Deregister both read and write for closed client
+            let _ = deregister_all(kqueue, fd);
         }
     }
 }
@@ -91,13 +143,6 @@ fn cleanup_idle_clients(server: &mut Server) {
         if let Some(last_req) = client.request_at {
             if now.duration_since(last_req) > server.client_timeout {
                 eprintln!("Closing client due to request timeout: {}", client.peer_addr);
-
-                // Build 408 response
-                let response = Response::new(408, "Request Timeout")
-                    .with_body("Your request timed out.\n");
-
-                // Attempt to send it
-                let _ = client.send_response(response);
 
                 // Close the connection
                 let _ = client.stream.shutdown(std::net::Shutdown::Both);
@@ -130,7 +175,7 @@ pub fn run_loop(server: &mut Server) {
         // Timeout for kevent: 100ms
         let timeout = libc::timespec {
             tv_sec: 0,
-            tv_nsec: 100_000_000, // 100ms
+            tv_nsec: 100_000_000,
         };
 
         let nev = unsafe {

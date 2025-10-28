@@ -1,16 +1,19 @@
-use std::io::{ErrorKind, Read, Result, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time::Instant;
 
-use crate::core::{Request, Response};
+use crate::core::{Request};
 
 #[derive(Debug)]
 pub struct ClientConnection {
     pub stream: TcpStream,
     pub peer_addr: SocketAddr,
     pub local_addr: SocketAddr,
-    pub buffer: Vec<u8>,
-    pub request_at: Option<Instant>
+    pub read_buffer: Vec<u8>,
+    pub write_buffer: Vec<u8>,
+    pub write_registered: bool,
+    pub request_at: Option<Instant>,
+    pub should_close: bool,
 }
 
 impl ClientConnection {
@@ -23,8 +26,11 @@ impl ClientConnection {
             stream,
             peer_addr,
             local_addr,
-            buffer: Vec::with_capacity(8192),
+            read_buffer: Vec::with_capacity(4096),
+            write_buffer: Vec::new(),
+            write_registered: false,
             request_at: None,
+            should_close: false,
         })
     }
 
@@ -34,7 +40,7 @@ impl ClientConnection {
         match self.stream.read(&mut temp_buf) {
             Ok(0) => Ok(0), // Connection closed
             Ok(n) => {
-                self.buffer.extend_from_slice(&temp_buf[..n]);
+                self.read_buffer.extend_from_slice(&temp_buf[..n]);
                 
                 if self.request_at.is_none() {
                     self.request_at = Some(Instant::now());
@@ -47,31 +53,43 @@ impl ClientConnection {
     }
     
     pub fn parse_request(&mut self) -> Option<Request> {
-        if let Some((request, consumed)) = Request::parse(&self.buffer) {
-            self.buffer.drain(0..consumed);
+        if let Some((request, consumed)) = Request::parse(&self.read_buffer) {
+            self.read_buffer.drain(0..consumed);
             self.request_at = None;
             return Some(request);
         } 
         None
     }
 
-    pub fn send_response(&mut self, response: Response) -> Result<()> {
-        let bytes = response.to_bytes();
-        let mut offset = 0;
+    pub fn queue_response(&mut self, data: &[u8]) {
+        self.write_buffer.extend_from_slice(data);
+    }
 
-        while offset < bytes.len() {
-            match self.stream.write(&bytes[offset..]) {
-                Ok(0) => break, // connection closed
-                Ok(n) => offset += n, // advance by number of bytes written
-                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                    // Kernel buffer full: stop and return for now
-                    // You need to wait for writable event (via kqueue/epoll) before continuing
-                    break;
+    pub fn flush_write_buffer(&mut self) -> std::io::Result<bool> {
+        while !self.write_buffer.is_empty() {
+            match self.stream.write(&self.write_buffer) {
+                Ok(0) => {
+                    // Connection closed
+                    return Ok(false);
                 }
-                Err(e) => return Err(e),
+                Ok(n) => {
+                    self.write_buffer.drain(0..n);
+                }
+                Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
+                    // Can't write more now, try again later
+                    return Ok(true);
+                }
+                Err(e) => {
+                    return Err(e)
+                },
             }
         }
 
-        Ok(())
+        Ok(true)
     }
+
+    pub fn has_pending_write(&self) -> bool {
+        !self.write_buffer.is_empty()
+    }
+
 }

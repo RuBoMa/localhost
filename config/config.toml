@@ -25,6 +25,7 @@ admin_access = true
 
   [servers.routes."/static"]
   directory = "static"
+  directory_listing = true
   methods = ["GET"]
 
   # Custom error pages, placed under "{root}/errors/"

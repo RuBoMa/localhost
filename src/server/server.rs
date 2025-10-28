@@ -245,36 +245,44 @@ impl Server {
         default_index_response(&self.sockets)
     }
 
-    pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
+    pub fn handle_client_read(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
             Ok(0) => {
                 println!("[*] Client {} closed the connection", client.peer_addr);
-                return Ok(false); // Tcp will close on drop
+                return Ok(false); // connection closed
             }
             Ok(_) => {
                 if let Some(request) = client.parse_request() {
-                    let response = self.handle_request(&request, &client);
-
-                    client.send_response(response)?;
-
-                    // Check if client wants to close
-                    let close_connection = request
+                    client.should_close = request
                         .headers
                         .get("connection")
                         .map(|v| v.eq_ignore_ascii_case("close"))
                         .unwrap_or(false);
 
-                    if close_connection {
-                        client.stream.shutdown(std::net::Shutdown::Both)?;
-                        println!("[*] Close connection to  {}", client.peer_addr);
-                        return Ok(false); // stop handling
-                    }
+                    let response = self.handle_request(&request, &client);
+                    client.queue_response(&response.to_bytes()); // put into write_buffer
                 }
-                // keep connection open for persistent HTTP/1.1
-                return Ok(true);
+                Ok(true) // keep connection open
             }
             Err(e) => {
                 eprintln!("[!] Error reading from {}: {}", client.peer_addr, e);
+                let _ = client.stream.shutdown(std::net::Shutdown::Both);
+                Ok(false)
+            }
+        }
+    }
+
+    pub fn handle_client_write(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
+        match client.flush_write_buffer() {
+            Ok(true) => {
+                Ok(true)
+            }
+            Ok(false) => {
+                println!("[*] Client {} closed write connection", client.peer_addr);
+                Ok(false)
+            }
+            Err(e) => {
+                eprintln!("[!] Error writing to {}: {}", client.peer_addr, e);
                 let _ = client.stream.shutdown(std::net::Shutdown::Both);
                 Ok(false)
             }
@@ -313,11 +321,13 @@ impl Server {
             let file_size = part.content.len();
 
             if file_size < MIN_UPLOAD_SIZE {
-                return error_response_from_config(400, config);
+                return Response::new(400, "Bad Request")
+                        .with_body("Upload too small. Please provide a larger file.")
             }
 
             if file_size > MAX_UPLOAD_SIZE {
-                return error_response_from_config(413, config);
+                return Response::new(413, "Payload Too Large")
+                        .with_body("Upload too large. Maximum allowed size exceeded.")
             }
 
             // Build full path under upload_directory
