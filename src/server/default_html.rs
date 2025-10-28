@@ -24,20 +24,15 @@ pub fn default_index_response(routes: &HashMap<String, RouteConfig>) -> Response
         body.push_str("<li><em>No routes configured</em></li>");
     } else {
         for (route, cfg) in routes {
-            let description = if cfg.redirect.is_some() {
-                "redirect"
-            } else if cfg.directory.is_some() {
-                "directory"
-            } else if cfg.filename.is_some() {
-                "file"
-            } else if cfg.upload_dir.is_some() {
-                "upload"
+            let methods = if let Some(methods) = &cfg.methods {
+                methods.join(", ")
             } else {
-                "unknown"
+                "ALL".to_string()
             };
+        
             body.push_str(&format!(
-                "<li><code><a href={}>{}</a></code> &mdash; {}</li>",
-                route, route, description
+                "<li><code>[{}] - <a href={}>{}</a></code></li>",
+                methods, route, route
             ));
         }
     }
