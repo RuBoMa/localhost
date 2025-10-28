@@ -4,16 +4,18 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::Config;
-use crate::config::{ServerConfig, RouteConfig};
-use crate::ClientConnection;
-use crate::core::{Response, Request};
-use crate::server::default_html::{default_index_response};
-use crate::server::match_route;
+use crate::config::{RouteConfig, ServerConfig};
+use crate::core::{Request, Response};
+use crate::server::default_html::default_index_response;
 use crate::server::error_response_from_config;
-use crate::server::handler::{Admin, execute_handler, serve_static_file, generate_directory_listing, resolve_target_path};
-use crate::server::ServerSocket;
+use crate::server::handler::{
+    execute_handler, generate_directory_listing, resolve_target_path, serve_static_file, Admin,
+};
+use crate::server::match_route;
 use crate::server::run_loop;
+use crate::server::ServerSocket;
+use crate::ClientConnection;
+use crate::Config;
 
 #[derive(Debug)]
 pub struct Server {
@@ -100,7 +102,7 @@ impl Server {
                 return generate_directory_listing(
                     &target_path,
                     route_prefix,
-                    route_cfg.upload_dir.is_some()
+                    route_cfg.upload_dir.is_some(),
                 );
             }
 
@@ -172,21 +174,19 @@ impl Server {
         }
 
         // Step 5: Enforce allowed methods
-        if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
+        if let Err(_) = route_cfg.check_method(&request.method) {
             return error_response_from_config(405, config);
         }
 
         // Step 6: Upload handling (POST → upload_dir)
-        if let Some(upload_dir) = &route_cfg.upload_dir {    
-            let full_target_path = resolve_target_path(
-                &request.uri,
-                &route_prefix,
-                root_dir, &upload_dir);
+        if let Some(upload_dir) = &route_cfg.upload_dir {
+            let full_target_path =
+                resolve_target_path(&request.uri, &route_prefix, root_dir, &upload_dir);
 
             if request.method.eq_ignore_ascii_case("POST") {
                 return Server::handle_upload(request, &full_target_path, config);
             }
-            
+
             if request.method.eq_ignore_ascii_case("DELETE") {
                 return Server::handle_delete(&full_target_path, config);
             }
@@ -200,9 +200,21 @@ impl Server {
             let base_dir = root_dir.join(dir);
             let sub_path = &request.uri[route_prefix.len()..];
             let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
-            let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
+            let route_prefix = format!(
+                "{}/{}",
+                route_prefix.trim_end_matches('/'),
+                sub_path.trim_start_matches('/')
+            );
 
-            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix, request, config, client);
+            return self.handle_directory_request(
+                &base_dir,
+                route_cfg,
+                sub_path,
+                &route_prefix,
+                request,
+                config,
+                client,
+            );
         }
 
         // Step 8: Static file handling (GET/HEAD → filename)
@@ -255,12 +267,16 @@ impl Server {
         }
     }
 
-    fn handle_upload(request: &Request, upload_directory: &PathBuf, config: &ServerConfig) -> Response {
+    fn handle_upload(
+        request: &Request,
+        upload_directory: &PathBuf,
+        config: &ServerConfig,
+    ) -> Response {
         // Min and max upload size limits (in bytes)
         const MIN_UPLOAD_SIZE: usize = 1; // 1 byte minimum
         const MAX_UPLOAD_SIZE: usize = 1 * 1024 * 1024; // 10 MB maximum
 
-        if let Err(e) = std::fs::create_dir_all(upload_directory) {
+        if let Err(_) = std::fs::create_dir_all(upload_directory) {
             return error_response_from_config(500, config);
         }
 
@@ -270,7 +286,7 @@ impl Server {
 
         let parts = match request.multipart_parts() {
             Some(p) => p,
-            None => return error_response_from_config(400, config)
+            None => return error_response_from_config(400, config),
         };
 
         for part in parts {
@@ -295,7 +311,11 @@ impl Server {
 
             if let Some(parent) = full_path.parent() {
                 if let Err(e) = std::fs::create_dir_all(parent) {
-                    eprintln!("Failed to create directories for {}: {}", full_path.display(), e);
+                    eprintln!(
+                        "Failed to create directories for {}: {}",
+                        full_path.display(),
+                        e
+                    );
                     continue;
                 }
             }
@@ -319,13 +339,16 @@ impl Server {
         } else if target_path.is_dir() {
             std::fs::remove_dir_all(target_path)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Unknown file type"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unknown file type",
+            ))
         };
 
         match result {
             Ok(_) => Response::new(200, "OK")
                 .with_body(format!("Deleted successfully: {}", target_path.display())),
-            Err(_) => error_response_from_config(500, config)
+            Err(_) => error_response_from_config(500, config),
         }
     }
 
