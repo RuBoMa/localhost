@@ -238,7 +238,7 @@ impl Server {
                     // Check if client wants to close
                     let close_connection = request
                         .headers
-                        .get("Connection")
+                        .get("connection")
                         .map(|v| v.eq_ignore_ascii_case("close"))
                         .unwrap_or(false);
 
