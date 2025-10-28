@@ -1,0 +1,136 @@
+:root {
+    --primary-color: 50, 40%, 82%;
+    --secondary-color: 170, 27%, 7%;
+    --tertiary-color: 191, 30%, 5%;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#everythingContainer {
+    position: relative;
+    background: linear-gradient(rgba(12, 22, 24, 0.85), rgba(12, 22, 24, 0.85)), url("./blueflow.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+    min-height: 100vh;
+    min-width: 100vw;
+    background-color: hsl(var(--tertiary-color));
+    overflow: hidden;
+    color: hsl(var(--primary-color));
+    text-shadow: #e4dec0 0px 0px 3px;
+    font-size: 1.75vh;
+}
+
+#previewContainer {
+    will-change: transform;
+    box-shadow: hsl(var(--secondary-color) 0px 0px 10px);
+    margin: 1vw;
+}
+
+#gameContainer {
+    position: absolute;
+    display: grid;
+    box-shadow: hsl(var(--secondary-color), 0px, 0px, 10px);
+    width: 15vw;
+    height: 30vw;
+    min-width: 200px;
+    max-width: 400px;
+    min-height: 400px;
+    max-height: 800px;
+}
+
+#gameContainer div {
+    min-width: 200px;
+    max-width: 400px;
+    min-height: 400px;
+    max-height: 800px;
+}
+
+#menu {
+    position: absolute;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 20vw;
+    height: 40vw;
+    min-width: 200px;
+    max-width: 400px;
+    min-height: 400px;
+    max-height: 800px;
+    background-color: hsl(var(--tertiary-color), 0.8);
+}
+
+#continue,
+#restart {
+    width: fit-content;
+    height: fit-content;
+    margin-top: 2vh;
+    min-width: 0px !important;
+    min-height: 0px !important;
+}
+
+#continue:hover,
+#restart:hover {
+    cursor: pointer;
+}
+
+#overlapWrapper {
+    will-change: transform;
+    position: relative;
+    width: 20vw;
+    height: 40vw;
+    min-width: 200px;
+    max-width: 400px;
+    min-height: 400px;
+    max-height: 800px;
+}
+
+#timeContainer {
+    will-change: transform;
+    margin: 2vw;
+}
+
+#controlsContainer {
+    margin: 2vw;
+}
+
+#scoreContainer {
+    will-change: transform;
+    margin: 2vw;
+}
+
+#levelContainer {
+    will-change: transform;
+    margin: 2vw;
+}
+
+.clearedCell {
+    animation-name: clearingCells;
+    animation-duration: 0.5s;
+    animation-timing-function: ease-in-out;
+}
+
+@keyframes clearingCells {
+    0% {
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0);
+    }
+
+    50% {
+        background-color: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+    }
+
+    100% {
+        background-color: rgb(255, 255, 255);
+        box-shadow: 0 0 20px rgb(255, 255, 255);
+    }
+}

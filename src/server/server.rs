@@ -4,22 +4,18 @@ use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use crate::Config;
-use crate::config::{ServerConfig, RouteConfig};
-use crate::ClientConnection;
-use crate::core::{Response, Request};
-use crate::server::default_html::{
-    default_400_response,
-    default_403_response,
-    default_404_response,
-    default_405_response,
-    default_500_response,
-    default_index_response,
+use crate::config::{RouteConfig, ServerConfig};
+use crate::core::{Request, Response};
+use crate::server::default_html::default_index_response;
+use crate::server::error_response_from_config;
+use crate::server::handler::{
+    execute_handler, generate_directory_listing, resolve_target_path, serve_static_file, Admin,
 };
 use crate::server::match_route;
-use crate::server::handler::{Admin, serve_static_file, generate_directory_listing, resolve_target_path};
-use crate::server::ServerSocket;
 use crate::server::run_loop;
+use crate::server::ServerSocket;
+use crate::ClientConnection;
+use crate::Config;
 
 #[derive(Debug)]
 pub struct Server {
@@ -81,21 +77,24 @@ impl Server {
         route_cfg: &RouteConfig,
         request_subpath: &str,
         route_prefix: &str,
+        request: &Request,
+        config: &ServerConfig,
+        client: &ClientConnection,
     ) -> Response {
         // Full target path is base_path + request_subpath
         let target_path = root_dir.join(request_subpath.trim_start_matches('/'));
         let Ok(target_path) = target_path.canonicalize() else {
-            return default_404_response();
+            return error_response_from_config(404, config);
         };
         let Ok(root_dir) = root_dir.canonicalize() else {
-            return default_500_response(Some("Invalid root directory"));
+            return error_response_from_config(500, config);
         };
         if !target_path.starts_with(&root_dir) {
-            return default_403_response();
+            return error_response_from_config(403, config);
         }
 
         if target_path.is_file() {
-            return serve_static_file(&target_path);
+            return execute_handler(&target_path, request, config, client.local_addr.port());
         }
 
         if target_path.is_dir() {
@@ -103,21 +102,23 @@ impl Server {
                 return generate_directory_listing(
                     &target_path,
                     route_prefix,
-                    route_cfg.upload_dir.is_some()
+                    route_cfg.upload_dir.is_some(),
                 );
             }
 
             if let Some(file) = route_cfg.filename.clone() {
-                return serve_static_file(&target_path.join(file));
+                let file_path = target_path.join(file);
+                return execute_handler(&file_path, request, config, client.local_addr.port());
             }
 
-            if target_path.join("index.html").exists() {
-                return serve_static_file(&target_path.join("index.html"));
+            let index_path = target_path.join("index.html");
+            if index_path.exists() {
+                return execute_handler(&index_path, request, config, client.local_addr.port());
             }
-            return default_403_response();
+            return error_response_from_config(403, config);
         }
 
-        default_404_response()
+        error_response_from_config(404, config)
     }
 
     fn handle_request(&mut self, request: &Request, client: &ClientConnection) -> Response {
@@ -126,17 +127,22 @@ impl Server {
             Some(sock) => sock,
             None => {
                 eprintln!("[!] No socket found for local addr {}", client.local_addr);
-                return default_500_response(Some("Socket not found."));
+                let fallback_config = self
+                    .sockets
+                    .iter()
+                    .find_map(|sock| sock.configs.first())
+                    .expect("Server must have at least one associated config");
+                return error_response_from_config(500, fallback_config);
             }
         };
 
         // Step 2: Resolve configuration based on Host header
-        let host_header = request.headers.get("Host").map(|s| s.as_str());
+        let host_header = request.headers.get("host").map(|s| s.as_str());
         let config = socket.resolve_config(host_header);
         let root_dir = Path::new(&config.root);
 
-        // ✅ Step 2.5: Check admin access requirement
-        if socket.requires_admin_auth() {
+        // Step 2.5: Check admin access requirement
+        if config.admin_access {
             let is_authenticated = self.admin.validate_request(request);
 
             // If not authenticated
@@ -144,10 +150,10 @@ impl Server {
                 if request.uri == "/login" {
                     if request.method.eq_ignore_ascii_case("POST") {
                         // POST → attempt login
-                        return self.admin.handle_login(request);
+                        return self.admin.handle_login(request, config);
                     } else {
                         // GET → serve login page
-                        return serve_static_file(&root_dir.join("login.html"));
+                        return serve_static_file(&root_dir.join("login.html"), config);
                     }
                 } else {
                     // Any other admin route → redirect to login
@@ -159,7 +165,7 @@ impl Server {
         // Step 3: Find route match
         let (route_prefix, route_cfg) = match match_route(&config.routes, &request.uri) {
             Some(r) => r,
-            None => return default_404_response(),
+            None => return error_response_from_config(404, config),
         };
 
         // Step 4: Redirect
@@ -168,47 +174,61 @@ impl Server {
         }
 
         // Step 5: Enforce allowed methods
-        if let Err(allowed_methods) = route_cfg.check_method(&request.method) {
-            return default_405_response(Some(&allowed_methods));
+        if let Err(_) = route_cfg.check_method(&request.method) {
+            return error_response_from_config(405, config);
         }
 
         // Step 6: Upload handling (POST → upload_dir)
-        if let Some(upload_dir) = &route_cfg.upload_dir {    
-            let full_target_path = resolve_target_path(
-                &request.uri,
-                &route_prefix,
-                root_dir, &upload_dir);
+        if let Some(upload_dir) = &route_cfg.upload_dir {
+            let full_target_path =
+                resolve_target_path(&request.uri, &route_prefix, root_dir, &upload_dir);
 
             if request.method.eq_ignore_ascii_case("POST") {
-                return Server::handle_upload(request, &full_target_path);
+                return Server::handle_upload(request, &full_target_path, config);
             }
-            
+
             if request.method.eq_ignore_ascii_case("DELETE") {
-                return Server::handle_delete(&full_target_path);
+                return Server::handle_delete(&full_target_path, config);
             }
         }
-        
+
         // Step 7: Directory handling (GET/HEAD → directory or listing)
         if let Some(dir) = &route_cfg.directory {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return default_405_response(Some("GET, HEAD"));
+                return error_response_from_config(405, config);
             }
             let base_dir = root_dir.join(dir);
             let sub_path = &request.uri[route_prefix.len()..];
             let sub_path = if sub_path.is_empty() { "/" } else { sub_path };
+            
+            let full_path = base_dir.join(sub_path.trim_start_matches('/'));
+            if full_path.is_dir() && !request.uri.ends_with('/') {
+                let location = format!("{}/", request.uri);
+                return Response::new(301, "Moved Permanently")
+                    .header("Location", &location);
+            }
+
             let route_prefix = format!("{}/{}", route_prefix.trim_end_matches('/'), sub_path.trim_start_matches('/'));
 
-            return self.handle_directory_request(&base_dir, route_cfg, sub_path, &route_prefix);
+            return self.handle_directory_request(
+                &base_dir,
+                route_cfg,
+                sub_path,
+                &route_prefix,
+                request,
+                config,
+                client,
+            );
         }
 
         // Step 8: Static file handling (GET/HEAD → filename)
         if let Some(filename) = &route_cfg.filename {
             if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return default_405_response(Some("GET, HEAD"));
+                return error_response_from_config(405, config);
             }
 
             let full_path = root_dir.join(filename);
-            return serve_static_file(&full_path);
+            return execute_handler(&full_path, request, config, client.local_addr.port());
         }
 
         // Step 9: Misconfiguration. serve default index
@@ -222,16 +242,15 @@ impl Server {
                 return Ok(false); // Tcp will close on drop
             }
             Ok(_) => {
-                if let Some((request, consumed)) = client.parse_request() {
+                if let Some(request) = client.parse_request() {
                     let response = self.handle_request(&request, &client);
 
                     client.send_response(response)?;
-                    client.buffer.drain(..consumed);
 
                     // Check if client wants to close
                     let close_connection = request
                         .headers
-                        .get("Connection")
+                        .get("connection")
                         .map(|v| v.eq_ignore_ascii_case("close"))
                         .unwrap_or(false);
 
@@ -251,24 +270,26 @@ impl Server {
         }
     }
 
-    fn handle_upload(request: &Request, upload_directory: &PathBuf) -> Response {
+    fn handle_upload(
+        request: &Request,
+        upload_directory: &PathBuf,
+        config: &ServerConfig,
+    ) -> Response {
         // Min and max upload size limits (in bytes)
         const MIN_UPLOAD_SIZE: usize = 1; // 1 byte minimum
         const MAX_UPLOAD_SIZE: usize = 1 * 1024 * 1024; // 10 MB maximum
 
-        if let Err(e) = std::fs::create_dir_all(upload_directory) {
-            return default_500_response(
-                Some(&format!("Could not create upload directory: {}", e))
-            );
+        if let Err(_) = std::fs::create_dir_all(upload_directory) {
+            return error_response_from_config(500, config);
         }
 
         if !request.is_multipart() {
-            return default_400_response();
+            return error_response_from_config(400, config);
         }
 
         let parts = match request.multipart_parts() {
             Some(p) => p,
-            None => return default_400_response()
+            None => return error_response_from_config(400, config),
         };
 
         for part in parts {
@@ -281,15 +302,11 @@ impl Server {
             let file_size = part.content.len();
 
             if file_size < MIN_UPLOAD_SIZE {
-                return Response::new(400, "Bad Request")
-                    .with_body("Upload too small (minimum 1 byte)\n");
+                return error_response_from_config(400, config);
             }
 
             if file_size > MAX_UPLOAD_SIZE {
-                return Response::new(413, "Payload Too Large").with_body(format!(
-                    "File '{}' exceeds maximum size of {} bytes (got {} bytes)\n",
-                    filename, MAX_UPLOAD_SIZE, file_size
-                ));
+                return error_response_from_config(413, config);
             }
 
             // Build full path under upload_directory
@@ -297,7 +314,11 @@ impl Server {
 
             if let Some(parent) = full_path.parent() {
                 if let Err(e) = std::fs::create_dir_all(parent) {
-                    eprintln!("Failed to create directories for {}: {}", full_path.display(), e);
+                    eprintln!(
+                        "Failed to create directories for {}: {}",
+                        full_path.display(),
+                        e
+                    );
                     continue;
                 }
             }
@@ -311,9 +332,9 @@ impl Server {
         Response::new(200, "OK").with_body("File uploaded successfully\n")
     }
 
-    pub fn handle_delete(target_path: &Path) -> Response {
+    pub fn handle_delete(target_path: &Path, config: &ServerConfig) -> Response {
         if !target_path.exists() {
-            return default_404_response();
+            return error_response_from_config(404, config);
         }
 
         let result = if target_path.is_file() {
@@ -321,15 +342,16 @@ impl Server {
         } else if target_path.is_dir() {
             std::fs::remove_dir_all(target_path)
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Unknown file type"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Unknown file type",
+            ))
         };
 
         match result {
             Ok(_) => Response::new(200, "OK")
                 .with_body(format!("Deleted successfully: {}", target_path.display())),
-            Err(e) => default_500_response(
-                Some(&format!("Failed to delete {}: {}", target_path.display(), e))
-            ),
+            Err(_) => error_response_from_config(500, config),
         }
     }
 
