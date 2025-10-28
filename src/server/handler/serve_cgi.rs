@@ -3,18 +3,14 @@ use std::process::{Command, Stdio};
 use std::io::{Read, Write};
 use crate::core::{Request, Response};
 use crate::config::ServerConfig;
-use crate::server::default_404_response;
+use crate::server::error_response_from_config;
 use super::utils::{resolve_cgi_interpreter, set_cgi_env, parse_cgi_output};
 
 pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, local_port: u16) -> Response {
-    let interpreter = resolve_cgi_interpreter(path, config);
-    let interpreter = match interpreter {
+    let interpreter = match resolve_cgi_interpreter(path, config) {
         Some(cmd) => cmd,
         None => {
-            let body: &str = &format!("<h1>502 Bad Gateway</h1>\n<p>No CGI interpreter configured for this file type</p>\n<p>Script: <code>{}</code></p>", path.display());
-            return Response::new(502, "Bad Gateway")
-                .header("Content-Type", "text/html; charset=utf-8")
-                .with_body(body);
+            return error_response_from_config(502, config);
         }
     };
 
@@ -22,7 +18,7 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, loc
     let abs_path = match path.canonicalize() {
         Ok(p) => p,
         Err(_) => {
-            return default_404_response();
+            return error_response_from_config(404, config);
         }
     };
 
@@ -45,24 +41,15 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, loc
 
     let mut child = match cmd.spawn() {
         Ok(c) => c,
-        Err(e) => {
-            let body = format!("<h1>502 Bad Gateway</h1><p>Failed to spawn CGI: {}</p>", e);
-            return Response::new(502, "Bad Gateway")
-                .header("Content-Type", "text/html; charset=utf-8")
-                .with_body(body);
+        Err(_) => {
+            return error_response_from_config(502, config);
         }
     };
 
     // Send request body to CGI stdin
     if let Some(mut stdin) = child.stdin.take() {
-        if let Err(e) = stdin.write_all(&request.body) {
-            let body = format!(
-                "<h1>502 Bad Gateway</h1><p>Failed to write request body to CGI: {}</p>",
-                e
-            );
-            return Response::new(502, "Bad Gateway")
-                .header("Content-Type", "text/html; charset=utf-8")
-                .with_body(body);
+        if let Err(_) = stdin.write_all(&request.body) {
+            return error_response_from_config(502, config);
         }
         let _ = stdin.flush();
         drop(stdin);
@@ -76,6 +63,6 @@ pub fn serve_cgi_file(path: &Path, request: &Request, config: &ServerConfig, loc
 
     let _ = child.wait();
 
-    // Parse CGI output and return it as a Response
-    parse_cgi_output(&out)
+    // Parse CGI headers/body
+    parse_cgi_output(&out, config)
 }

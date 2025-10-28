@@ -66,8 +66,4 @@ impl ServerSocket {
 
         new_clients
     }
-
-    pub fn requires_admin_auth(&self) -> bool {
-        self.configs.iter().any(|cfg| cfg.admin_access)
-    }
 }

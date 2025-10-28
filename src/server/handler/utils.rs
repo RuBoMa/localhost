@@ -1,7 +1,8 @@
-﻿use crate::config::ServerConfig;
+use crate::config::ServerConfig;
 use crate::core::{Request, Response};
 use std::path::Path;
 use std::process::Command;
+use crate::server::error_response_from_config;
 
 /// Very basic MIME type guessing based on file extension.
 /// Extend as needed for your use case.
@@ -94,120 +95,9 @@ pub fn split_uri(uri: &str) -> (&str, &str) {
     }
 }
 
-/// This function is for parsing the cgi output into a proper response with headers and a body since the raw cgi output is just a list of bytes
-pub fn parse_cgi_output(output: &[u8]) -> Response {
-    let (header_bytes, body_bytes) = if let Some(pos) = find_sequence(output, b"\r\n\r\n") {
-        (&output[..pos], &output[pos + 4..])
-    } else if let Some(pos) = find_sequence(output, b"\n\n") {
-        (&output[..pos], &output[pos + 2..])
-    } else {
-        let resp = Response::new(200, "OK");
-        return resp.with_body(output.to_vec());
-    };
-
-    let header_text = String::from_utf8_lossy(header_bytes);
-    let mut status_code = 200u16;
-    let mut reason = String::from("OK");
-    let mut headers: Vec<(String, String)> = Vec::new();
-
-    for line in header_text.lines() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        if let Some((name, value)) = line.split_once(':') {
-            let name = name.trim();
-            let value = value.trim();
-            if name.eq_ignore_ascii_case("Status") {
-                let mut parts = value.split_whitespace();
-                if let Some(code_str) = parts.next() {
-                    if let Ok(code) = code_str.parse::<u16>() {
-                        status_code = code;
-                        let rest = parts.collect::<Vec<_>>().join(" ");
-                        if !rest.is_empty() {
-                            reason = rest;
-                        } else {
-                            reason = default_reason_phrase(code).to_string();
-                        }
-                    }
-                }
-            } else {
-                headers.push((name.to_string(), value.to_string()));
-            }
-        }
-    }
-
-    let mut resp = Response::new(status_code, &reason);
-    for (key, value) in headers {
-        if key.eq_ignore_ascii_case("Content-Length") {
-            continue;
-        }
-        resp = resp.header(&key, &value);
-    }
-    resp.with_body(body_bytes.to_vec())
-}
-
 /// Find pattern in buffer
 pub fn find_sequence(buffer: &[u8], pattern: &[u8]) -> Option<usize> {
     buffer.windows(pattern.len()).position(|w| w == pattern)
-}
-
-pub fn check_name_and_port(
-    request: &Request,
-    config: &ServerConfig,
-    local_port: u16,
-) -> Result<(String, u16), Response> {
-    // Check that host header exists
-    let host = match request.headers.get("host") {
-        Some(h) if !h.trim().is_empty() => h.trim(),
-        _ => {
-            return Err(Response::new(400, "Bad Request")
-                .header("Content-Type", "text/plain; charset=utf-8")
-                .with_body("Missing Host header"));
-        }
-    };
-
-    // Parse server name and port from host header
-    let (server_name, host_port) = match host.rsplit_once(':') {
-        Some((name, port_str))
-            if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) =>
-        {
-            let p = match port_str.parse::<u16>() {
-                Ok(v) => v,
-                Err(_) => {
-                    return Err(Response::new(400, "Bad Request")
-                        .header("Content-Type", "text/plain; charset=utf-8")
-                        .with_body("Invalid Host port"));
-                }
-            };
-            (name, p)
-        }
-        _ => {
-            return Err(Response::new(400, "Bad Request")
-                .header("Content-Type", "text/plain; charset=utf-8")
-                .with_body("Host must include explicit port"));
-        }
-    };
-
-    // Enforce server name if configured
-    if let Some(cfg_name) = &config.server_name {
-        if !server_name.eq_ignore_ascii_case(cfg_name) {
-            return Err(Response::new(400, "Bad Request")
-                .header("Content-Type", "text/plain; charset=utf-8")
-                .with_body(format!(
-                    "Host name: {} does not match server config: {}\nRequest Headers: {:?}",
-                    server_name, cfg_name, request.headers
-                )));
-        }
-    }
-
-    // Enforce port matches socket's local port
-    if host_port != local_port {
-        return Err(Response::new(400, "Bad Request")
-            .header("Content-Type", "text/plain; charset=utf-8")
-            .with_body("Host port does not match listening port"));
-    }
-
-    Ok((server_name.to_string(), host_port))
 }
 
 pub fn default_reason_phrase(code: u16) -> &'static str {
@@ -232,4 +122,102 @@ pub fn default_reason_phrase(code: u16) -> &'static str {
         504 => "Gateway Timeout",
         _ => "OK",
     }
+}
+
+pub fn parse_cgi_output(output: &[u8], config: &ServerConfig) -> Response {
+    // Potentially add redirect functionality and default content type
+    let (header_bytes, body_bytes) = if let Some(pos) = find_sequence(output, b"\r\n\r\n") {
+        (&output[..pos], &output[pos + 4..])
+    } else if let Some(pos) = find_sequence(output, b"\n\n") {
+        (&output[..pos], &output[pos + 2..])
+    } else {
+        let resp = Response::new(200, "OK");
+        return resp.with_body(output.to_vec())
+    };
+
+    let header_text = String::from_utf8_lossy(header_bytes);
+    let mut status_code = 200u16;
+    let mut reason = String::from("OK");
+    let mut headers: Vec<(String, String)> = Vec::new();
+
+    for line in header_text.lines() {
+        if line.trim().is_empty() { continue; }
+        if let Some((name, value)) = line.split_once(':') {
+            let name = name.trim();
+            let value = value.trim();
+            if name.eq_ignore_ascii_case("Status") {
+                let mut parts = value.split_whitespace();
+                if let Some(code_str) = parts.next() {
+                    if let Ok(code) = code_str.parse::<u16>() {
+                        status_code = code;
+                        let rest = parts.collect::<Vec<_>>().join(" ");
+                        if !rest.is_empty() {
+                            reason = rest;
+                        } else {
+                            reason = default_reason_phrase(code).to_string();
+                        }
+                    }
+                }
+            } else {
+                headers.push((name.to_string(), value.to_string()));
+            }
+        }
+    }
+
+    if status_code != 200u16 {
+        error_response_from_config(status_code, config)
+    } else {
+        let mut resp = Response::new(status_code, &reason);
+        for (key, value) in headers {
+            if key.eq_ignore_ascii_case("Content-Length") {
+                continue;
+            }
+            resp = resp.header(&key, &value);
+        }
+        resp.with_body(body_bytes.to_vec())
+    }
+}
+
+pub fn check_name_and_port(
+    request: &Request,
+    config: &ServerConfig,
+    local_port: u16,
+) -> Result<(String, u16), Response> {
+    // Check that host header exists
+    let host = match request.headers.get("host") {
+        Some(h) if !h.trim().is_empty() => h.trim(),
+        _ => {
+            return Err(error_response_from_config(400, config));
+        }
+    };
+
+    // Parse server name and port from host header
+    let (server_name, host_port) = match host.rsplit_once(':') {
+        Some((name, port_str)) if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) => {
+            let p = match port_str.parse::<u16>() {
+                Ok(v) => v,
+                Err(_) => {
+                    return Err(error_response_from_config(400, config));
+                }
+            };
+            (name, p)
+        }
+        _ => {
+            return Err(error_response_from_config(400, config));
+        }
+    };
+
+    // Enforce server name if configured
+    if let Some(cfg_name) = &config.server_name {
+        if !server_name.eq_ignore_ascii_case(cfg_name) {
+            return Err(error_response_from_config(400, config));
+        }
+    }
+
+    // Enforce port matches socket's local port
+    if host_port != local_port {
+        return Err(error_response_from_config(400, config));
+    }
+
+    Ok((server_name.to_string(), host_port))
 }

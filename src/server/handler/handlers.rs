@@ -11,6 +11,6 @@ pub fn execute_handler(path: &Path, request: &Request, config: &ServerConfig, lo
     if resolve_cgi_interpreter(path, config).is_some() {
         serve_cgi_file(path, request, config, local_port)
     } else {
-        serve_static_file(path)
+        serve_static_file(path, config)
     }
 }

@@ -1,6 +1,6 @@
 use std::io::{ErrorKind, Read, Result, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::time::{Instant, Duration};
+use std::time::Instant;
 
 use crate::core::{Request, Response};
 
@@ -46,8 +46,13 @@ impl ClientConnection {
         }
     }
     
-    pub fn parse_request(&self) -> Option<(Request, usize)> {
-        Request::parse(&self.buffer)
+    pub fn parse_request(&mut self) -> Option<Request> {
+        if let Some((request, consumed)) = Request::parse(&self.buffer) {
+            self.buffer.drain(0..consumed);
+            self.request_at = None;
+            return Some(request);
+        } 
+        None
     }
 
     pub fn send_response(&mut self, response: Response) -> Result<()> {
@@ -68,11 +73,5 @@ impl ClientConnection {
         }
 
         Ok(())
-    }
-
-    pub fn is_request_timed_out(&self, now: Instant, timeout: Duration) -> bool {
-        self.request_at
-            .map(|t| now.duration_since(t) > timeout)
-            .unwrap_or(false)
     }
 }
