@@ -1,6 +1,5 @@
 ﻿use crate::config::ServerConfig;
 use crate::core::{Request, Response};
-use crate::server::handler::serve_cgi;
 use std::path::Path;
 use std::process::Command;
 
@@ -60,9 +59,7 @@ pub fn set_cgi_env(
     cmd.env("SCRIPT_FILENAME", script_path.as_os_str());
 
     // Validate Host/name/port and use the validated values
-    //let (server_name, host_port) = check_name_and_port(request, config, local_port)?;
-    let server_name = "Hi";
-    let host_port = local_port;
+    let (server_name, host_port) = check_name_and_port(request, config, local_port)?;
 
     // Set validated server name and port
     cmd.env("SERVER_NAME", &server_name);
@@ -196,7 +193,10 @@ pub fn check_name_and_port(
         if !server_name.eq_ignore_ascii_case(cfg_name) {
             return Err(Response::new(400, "Bad Request")
                 .header("Content-Type", "text/plain; charset=utf-8")
-                .with_body("Host name does not match server config"));
+                .with_body(format!(
+                    "Host name: {} does not match server config: {}\nRequest Headers: {:?}",
+                    server_name, cfg_name, request.headers
+                )));
         }
     }
 

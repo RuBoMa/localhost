@@ -4,85 +4,166 @@ Config {
             server_address: "127.0.0.1",
             ports: [
                 8080,
-                8081,
             ],
             server_name: Some(
                 "localhost",
             ),
-            root: "routes",
-            client_timeout_secs: 120,
+            root: "root",
             routes: {
-                "/main": FileRouteConfig {
-                    filename: Some(
-                        "main.png",
-                    ),
-                    methods: None,
-                    redirect: None,
-                },
-                "/hello": FileRouteConfig {
-                    filename: Some(
-                        "hello.py",
-                    ),
-                    methods: None,
-                    redirect: None,
-                },
-                "/old-page": FileRouteConfig {
+                "/static": RouteConfig {
                     filename: None,
-                    methods: None,
-                    redirect: Some(
-                        RedirectConfig {
-                            to: "/",
-                            code: 302,
-                        },
+                    directory: Some(
+                        "static",
                     ),
-                },
-                "/": FileRouteConfig {
-                    filename: Some(
-                        "index.html",
-                    ),
+                    directory_listing: false,
                     methods: Some(
                         [
-                            "post",
-                            "get",
+                            "GET",
                         ],
                     ),
                     redirect: None,
+                    upload_dir: None,
                 },
-                "/broken": FileRouteConfig {
-                    filename: Some(
-                        "no_response.py",
+                "/root": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "",
                     ),
+                    directory_listing: true,
+                    methods: Some(
+                        [
+                            "GET",
+                            "POST",
+                            "DELETE",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: Some(
+                        "",
+                    ),
+                },
+                "/": RouteConfig {
+                    filename: None,
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/login": RouteConfig {
+                    filename: Some(
+                        "login.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                            "POST",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+            },
+            cgi_handlers: {},
+            admin_access: true,
+        },
+        ServerConfig {
+            server_address: "127.0.0.1",
+            ports: [
+                8081,
+            ],
+            server_name: Some(
+                "public",
+            ),
+            root: "root",
+            routes: {
+                "/piscine-js": RouteConfig {
+                    filename: Some(
+                        "./site/index.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/static": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "./site/static",
+                    ),
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/hello": RouteConfig {
+                    filename: Some(
+                        "./hello.py",
+                    ),
+                    directory: None,
+                    directory_listing: false,
                     methods: None,
                     redirect: None,
+                    upload_dir: None,
+                },
+                "/": RouteConfig {
+                    filename: None,
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/broken": RouteConfig {
+                    filename: Some(
+                        "./no_response.py",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
                 },
             },
             cgi_handlers: {
                 ".py": "python3",
             },
-        },
-        ServerConfig {
-            server_address: "127.0.0.1",
-            ports: [
-                8080,
-            ],
-            server_name: Some(
-                "anotherhost",
-            ),
-            root: "",
-            client_timeout_secs: 30,
-            routes: {},
-            cgi_handlers: {},
+            admin_access: false,
         },
     ],
+    client_timeout_secs: 120,
+    admin: AdminConfig {
+        username: "admin",
+        password: "pewpew321",
+    },
 }
-[+] Bound to 127.0.0.1:8081
 [+] Bound to 127.0.0.1:8080
+[+] Bound to 127.0.0.1:8081
 Server {
     sockets: [
         ServerSocket {
-            addr: 127.0.0.1:8081,
+            addr: 127.0.0.1:8080,
             listener: TcpListener {
-                addr: 127.0.0.1:8081,
+                addr: 127.0.0.1:8080,
                 fd: 3,
             },
             configs: [
@@ -90,180 +171,201 @@ Server {
                     server_address: "127.0.0.1",
                     ports: [
                         8080,
-                        8081,
                     ],
                     server_name: Some(
                         "localhost",
                     ),
-                    root: "routes",
-                    client_timeout_secs: 120,
+                    root: "root",
                     routes: {
-                        "/main": FileRouteConfig {
-                            filename: Some(
-                                "main.png",
-                            ),
-                            methods: None,
-                            redirect: None,
-                        },
-                        "/hello": FileRouteConfig {
-                            filename: Some(
-                                "hello.py",
-                            ),
-                            methods: None,
-                            redirect: None,
-                        },
-                        "/old-page": FileRouteConfig {
+                        "/static": RouteConfig {
                             filename: None,
-                            methods: None,
-                            redirect: Some(
-                                RedirectConfig {
-                                    to: "/",
-                                    code: 302,
-                                },
+                            directory: Some(
+                                "static",
                             ),
-                        },
-                        "/": FileRouteConfig {
-                            filename: Some(
-                                "index.html",
-                            ),
+                            directory_listing: false,
                             methods: Some(
                                 [
-                                    "post",
-                                    "get",
+                                    "GET",
                                 ],
                             ),
                             redirect: None,
+                            upload_dir: None,
                         },
-                        "/broken": FileRouteConfig {
-                            filename: Some(
-                                "no_response.py",
+                        "/root": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "",
                             ),
-                            methods: None,
+                            directory_listing: true,
+                            methods: Some(
+                                [
+                                    "GET",
+                                    "POST",
+                                    "DELETE",
+                                ],
+                            ),
                             redirect: None,
+                            upload_dir: Some(
+                                "",
+                            ),
+                        },
+                        "/": RouteConfig {
+                            filename: None,
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/login": RouteConfig {
+                            filename: Some(
+                                "login.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                    "POST",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
                         },
                     },
-                    cgi_handlers: {
-                        ".py": "python3",
-                    },
+                    cgi_handlers: {},
+                    admin_access: true,
                 },
             ],
         },
         ServerSocket {
-            addr: 127.0.0.1:8080,
+            addr: 127.0.0.1:8081,
             listener: TcpListener {
-                addr: 127.0.0.1:8080,
+                addr: 127.0.0.1:8081,
                 fd: 4,
             },
             configs: [
                 ServerConfig {
                     server_address: "127.0.0.1",
                     ports: [
-                        8080,
                         8081,
                     ],
                     server_name: Some(
-                        "localhost",
+                        "public",
                     ),
-                    root: "routes",
-                    client_timeout_secs: 120,
+                    root: "root",
                     routes: {
-                        "/main": FileRouteConfig {
+                        "/piscine-js": RouteConfig {
                             filename: Some(
-                                "main.png",
+                                "./site/index.html",
                             ),
-                            methods: None,
-                            redirect: None,
-                        },
-                        "/hello": FileRouteConfig {
-                            filename: Some(
-                                "hello.py",
-                            ),
-                            methods: None,
-                            redirect: None,
-                        },
-                        "/old-page": FileRouteConfig {
-                            filename: None,
-                            methods: None,
-                            redirect: Some(
-                                RedirectConfig {
-                                    to: "/",
-                                    code: 302,
-                                },
-                            ),
-                        },
-                        "/": FileRouteConfig {
-                            filename: Some(
-                                "index.html",
-                            ),
+                            directory: None,
+                            directory_listing: false,
                             methods: Some(
                                 [
-                                    "post",
-                                    "get",
+                                    "GET",
                                 ],
                             ),
                             redirect: None,
+                            upload_dir: None,
                         },
-                        "/broken": FileRouteConfig {
-                            filename: Some(
-                                "no_response.py",
+                        "/static": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "./site/static",
                             ),
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/hello": RouteConfig {
+                            filename: Some(
+                                "./hello.py",
+                            ),
+                            directory: None,
+                            directory_listing: false,
                             methods: None,
                             redirect: None,
+                            upload_dir: None,
+                        },
+                        "/": RouteConfig {
+                            filename: None,
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/broken": RouteConfig {
+                            filename: Some(
+                                "./no_response.py",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
                         },
                     },
                     cgi_handlers: {
                         ".py": "python3",
                     },
-                },
-                ServerConfig {
-                    server_address: "127.0.0.1",
-                    ports: [
-                        8080,
-                    ],
-                    server_name: Some(
-                        "anotherhost",
-                    ),
-                    root: "",
-                    client_timeout_secs: 30,
-                    routes: {},
-                    cgi_handlers: {},
+                    admin_access: false,
                 },
             ],
         },
     ],
     clients: [],
+    client_timeout: 120s,
+    admin: Admin {
+        config: AdminConfig {
+            username: "admin",
+            password: "pewpew321",
+        },
+        session_id: None,
+        session_created: None,
+        session_timeout: 3600s,
+    },
 }
 [*] Server initialized
-[*] Accepted connection from 127.0.0.1:61027 on 127.0.0.1:8080
---- Raw HTTP Response ---
-HTTP/1.1 200 OK
-Content-Type: text/html
-Content-Length: 147
-
-<!DOCTYPE html>
-<html>
-<head><title>localhost</title></head>
-<body>
-  <h1>Welcome</h1>
-  <p>Testing to see if page is rendered.</p>
-</body>
-</html>
-[*] Accepted connection from 127.0.0.1:61029 on 127.0.0.1:8080
---- Raw HTTP Response ---
-HTTP/1.1 200 OK
-Content-Length: 107
-Content-Type: text/plain
-
-Some request info:
-SERVER_NAME=localhost
-SERVER_PORT=8080
-METHOD=GET
-SCRIPT_NAME=/hello
-QUERY=
-BODY_LEN=0
-
---- Raw HTTP Response ---
-HTTP/1.1 200 OK
-Content-Length: 2
-
-No
+[*] Accepted connection from 127.0.0.1:52303 on 127.0.0.1:8080
+[*] Accepted connection from 127.0.0.1:52305 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52303 closed the connection
+[*] Client 127.0.0.1:52305 closed the connection
+[*] Accepted connection from 127.0.0.1:52307 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52307 closed the connection
+[*] Accepted connection from 127.0.0.1:52314 on 127.0.0.1:8080
+[*] Accepted connection from 127.0.0.1:52320 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52314 closed the connection
+[*] Accepted connection from 127.0.0.1:52322 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52320 closed the connection
+[*] Client 127.0.0.1:52322 closed the connection
+[*] Accepted connection from 127.0.0.1:52324 on 127.0.0.1:8080
+[*] Accepted connection from 127.0.0.1:52326 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52324 closed the connection
+[*] Accepted connection from 127.0.0.1:52329 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52326 closed the connection
+[*] Accepted connection from 127.0.0.1:52331 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52329 closed the connection
+[*] Accepted connection from 127.0.0.1:52333 on 127.0.0.1:8080
+[*] Client 127.0.0.1:52333 closed the connection
+[*] Accepted connection from 127.0.0.1:52341 on 127.0.0.1:8080
+[*] Accepted connection from 127.0.0.1:52343 on 127.0.0.1:8081
+[*] Accepted connection from 127.0.0.1:52345 on 127.0.0.1:8081
+[*] Client 127.0.0.1:52341 closed the connection
+[*] Client 127.0.0.1:52345 closed the connection
+[*] Client 127.0.0.1:52331 closed the connection
+[*] Client 127.0.0.1:52343 closed the connection
