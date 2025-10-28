@@ -5,6 +5,12 @@ use std::collections::HashMap;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub servers: Vec<ServerConfig>,
+    
+    #[serde(default = "default_timeout_secs")]
+    pub client_timeout_secs: u64,
+    
+    #[serde(default)]
+    pub admin: AdminConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -15,12 +21,9 @@ pub struct ServerConfig {
     
     #[serde(default)]
     pub root: String,
-
-    #[serde(default = "default_timeout_secs")]
-    pub client_timeout_secs: u64,
     
     #[serde(default)]
-    pub routes: HashMap<String, FileRouteConfig>,
+    pub routes: HashMap<String, RouteConfig>,
 
     /// Map file extensions to CGI interpreter/command
     #[serde(default)]
@@ -28,7 +31,10 @@ pub struct ServerConfig {
 
     /// HTTP status code -> custom error file
     #[serde(default)]
-    pub errors: HashMap<String, FileRouteConfig>,
+    pub errors: HashMap<String, RouteConfig>,
+
+    #[serde(default)]
+    pub admin_access: bool,
 }
 
 fn default_timeout_secs() -> u64 {
@@ -41,27 +47,73 @@ impl Config {
             if server.ports.is_empty() {
                 return Err(format!("Server at {} has no ports", server.server_address));
             }
-
-            if server.routes.is_empty() {
-                continue;
+            
+            if server.root.trim().is_empty() {
+                return Err(format!(
+                    "Server at {} must have a non-empty 'root' directory defined",
+                    server.server_address
+                ));
             }
 
             if !Path::new(&server.root).is_dir() {
                 return Err(format!("Root directory '{}' does not exist", server.root));
             }
-
-            for (route, cfg) in &server.routes {            
+            
+            for (route, cfg) in &server.routes {
                 if !route.starts_with("/") {
                     eprintln!("Warning: route '{}' should start with '/'", route);
                 }
-                
-                let full_path = std::path::Path::new(&server.root).join(&cfg.filename);
-                if !full_path.exists() {
+
+                // A valid route must define at least one of these
+                if cfg.filename.is_none()
+                    && cfg.directory.is_none()
+                    && cfg.redirect.is_none()
+                    && cfg.upload_dir.is_none()
+                {
                     eprintln!(
-                        "Warning: route '{}' points to missing file: {}",
-                        route,
-                        full_path.display()
+                        "Warning: Route '{}' has no directory, redirect, upload_dir, or filename defined. Default index will be served.",
+                        route
                     );
+                }
+
+                // Check file existence
+                if let Some(filename) = &cfg.filename {
+                    let full_path = Path::new(&server.root).join(filename);
+                    if !full_path.exists() {
+                        eprintln!(
+                            "Warning: route '{}' points to missing file: {}",
+                            route,
+                            full_path.display()
+                        );
+                    }
+                }
+
+                // Check directory existence
+                if let Some(directory) = &cfg.directory {                
+                    if route == "/" {
+                        return Err("Route '/' cannot serve a directory — use a subpath like '/files' instead.".to_string());
+                    }
+
+                    let full_path = Path::new(&server.root).join(directory);
+                    if !full_path.exists() || !full_path.is_dir() {
+                        eprintln!(
+                            "Warning: route '{}' points to missing or invalid directory: {}",
+                            route,
+                            full_path.display()
+                        );
+                    }
+                }
+
+                // Validate upload dir (we create it later if needed)
+                if let Some(upload_dir) = &cfg.upload_dir {
+                    let path = Path::new(upload_dir);
+                    if path.exists() && !path.is_dir() {
+                        return Err(format!(
+                            "Route '{}' defines an upload_dir that exists but is not a directory: {}",
+                            route,
+                            path.display()
+                        ));
+                    }
                 }
             }
 
@@ -73,8 +125,16 @@ impl Config {
                     if code.parse::<u16>().is_err() {
                         eprintln!("Warning: error code '{}' is not a valid u16", code);
                     }
+                    
+                    let Some(filename) = &cfg.filename else {
+                        eprintln!(
+                            "Warning: custom error {} has no filename configured",
+                            code
+                        );
+                        continue;
+                    };
 
-                    let full_path = errors_dir.join(&cfg.filename);
+                    let full_path = errors_dir.join(filename);
                     if !full_path.exists() {
                         eprintln!(
                             "Warning: custom error {} file not found: {}",
@@ -103,6 +163,62 @@ impl Config {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct FileRouteConfig {
-    pub filename: String, // Relative to the server's root
+pub struct RouteConfig {
+    #[serde(default)]
+    pub filename: Option<String>, // for single file
+
+    #[serde(default)]
+    pub directory: Option<String>, // for directory mapping
+
+    #[serde(default)]
+    pub directory_listing: bool, // default to false
+
+    #[serde(default)]
+    pub methods: Option<Vec<String>>, // allowed methods
+
+    #[serde(default)]
+    pub redirect: Option<RedirectConfig>, // optional redirect
+    
+    #[serde(default)]
+    pub upload_dir: Option<String>,
+}
+
+impl RouteConfig {
+    pub fn check_method(&self, method: &str) -> Result<(), String> {
+        if let Some(allowed) = &self.methods {
+            if !allowed.iter().any(|m| m.eq_ignore_ascii_case(method)) {
+                return Err(allowed.join(", "));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct RedirectConfig {
+    pub to: String,               // Target URL or path
+
+    #[serde(default = "default_redirect_code")]
+    pub code: u16,                // e.g., 301 or 302
+}
+
+fn default_redirect_code() -> u16 {
+    302 // Default to 302 Found
+}
+
+#[derive(Debug, Default, Deserialize, Clone)]
+pub struct AdminConfig {
+    #[serde(default = "default_admin_username")]
+    pub username: String,
+
+    #[serde(default = "default_admin_password")]
+    pub password: String,
+}
+
+fn default_admin_username() -> String {
+    "admin".to_string()
+}
+
+fn default_admin_password() -> String {
+    "password123".to_string()
 }

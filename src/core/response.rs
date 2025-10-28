@@ -6,6 +6,7 @@ pub struct Response {
     pub status_code: u16,
     pub reason_phrase: String,
     pub headers: HashMap<String, String>,
+    pub cookies: Vec<String>,
     pub body: Vec<u8>,
 }
 
@@ -15,6 +16,7 @@ impl Response {
             status_code,
             reason_phrase: reason_phrase.to_string(),
             headers: HashMap::new(),
+            cookies: Vec::new(),
             body: Vec::new(),
         }
     }
@@ -28,6 +30,29 @@ impl Response {
 
     pub fn header(mut self, key: &str, value: &str) -> Self {
         self.headers.insert(key.to_string(), value.to_string());
+        self
+    }
+
+    /// Set a cookie with optional attributes
+    pub fn set_cookie(
+        mut self,
+        name: &str,
+        value: &str,
+        path: Option<&str>,
+        max_age: Option<u64>,
+        http_only: bool,
+    ) -> Self {
+        let mut cookie = format!("{}={}", name, value);
+        if let Some(p) = path {
+            cookie.push_str(&format!("; Path={}", p));
+        }
+        if let Some(age) = max_age {
+            cookie.push_str(&format!("; Max-Age={}", age));
+        }
+        if http_only {
+            cookie.push_str("; HttpOnly");
+        }
+        self.cookies.push(cookie);
         self
     }
 
@@ -47,11 +72,45 @@ impl Response {
             let _ = write!(response, "{}: {}\r\n", key, value);
         }
 
+        // Cookies
+        for cookie in &self.cookies {
+            let _ = write!(response, "Set-Cookie: {}\r\n", cookie);
+        }
+
         // End of headers
         response.push_str("\r\n");
 
         let mut bytes = response.into_bytes();
         bytes.extend_from_slice(&self.body);
         bytes
+    }
+    
+    pub fn redirect(location: String, status_code: u16) -> Self {
+        let reason_phrase = match status_code {
+            301 => "Moved Permanently",
+            302 => "Found",
+            303 => "See Other",
+            307 => "Temporary Redirect",
+            308 => "Permanent Redirect",
+            _ => "Redirect",
+        }
+        .to_string();
+
+        let mut headers = HashMap::new();
+        headers.insert("Location".to_string(), location.clone());
+        headers.insert("Content-Type".to_string(), "text/html".to_string());
+
+        let body = format!(
+            "<html><body><h1>{} Redirect</h1><p>Redirecting to <a href=\"{}\">{}</a></p></body></html>",
+            status_code, location, location
+        );
+
+        Self {
+            status_code,
+            reason_phrase,
+            headers,
+            cookies: Vec::new(),
+            body: body.into_bytes(),
+        }
     }
 }

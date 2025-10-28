@@ -1,15 +1,4 @@
-[[servers]]
-server_address = "127.0.0.1"
-ports = [8080, 8081]
-server_name = "localhost"
 client_timeout_secs = 120
-root = "routes"
-
-  [servers.routes."/"]
-  filename = "index.html"
-
-  [servers.routes."/main"]
-  filename = "main.png"
 
   [servers.routes."/hello"]
   filename = "hello.py"
@@ -35,3 +24,48 @@ root = "routes"
 [[servers]]
 server_address = "127.0.0.1"
 ports = [8080]
+server_name = "localhost"
+root = "root"
+admin_access = true
+
+  # Default route: homepage / list of routes
+  [servers.routes."/"]
+  methods = ["GET"]
+
+  # Login redirect: example, always allowed
+  [servers.routes."/login"]
+  filename = "login.html"
+  methods = ["GET", "POST"]
+
+  # Upload / root directory listing
+  [servers.routes."/root"]
+  directory = ""
+  directory_listing = true
+  upload_dir = ""
+  methods = ["GET", "POST", "DELETE"]
+
+  [servers.routes."/static"]
+  directory = "static"
+  methods = ["GET"]
+
+[[servers]]
+server_address = "127.0.0.1"
+ports = [8081]
+server_name = "public"
+root = "root"
+admin_access = false
+
+  [servers.routes."/"]
+  methods = ["GET"]
+  
+  [servers.routes."/piscine-js"]
+  filename = "./site/index.html"
+  methods = ["GET"]
+
+  [servers.routes."/static"]
+  directory = "./site/static"
+  methods = ["GET"]
+
+[admin]
+username = "admin"
+password = "pewpew321"
