@@ -136,21 +136,7 @@ file = "files/"  # Trailing slash for directory listing
 ".pl" = "perl"      # Optional: map .pl files to Perl
 ```
 
-The server can execute CGI scripts based on file extension configuration. This allows dynamic content generation (for example, using `.py` scripts) alongside static file serving without changing existing route behavior.
-
-#### How It Works
-
-1. **Route resolution** – When a request matches a route pointing to a file, the server checks the extension.
-2. **Interpreter detection** – The configured interpreter for the file type is invoked.
-3. **Environment setup** – Standard CGI environment variables are set, including:
-
-   - `REQUEST_METHOD`
-   - `QUERY_STRING`
-   - `CONTENT_LENGTH`
-   - `SERVER_NAME` / `SERVER_PORT` (validated against the Host header)
-
-4. **Body forwarding** – The request body is piped into the CGI process stdin.
-5. **Output parsing** – CGI stdout is read and parsed into HTTP headers + body, then sent back to the client.
+The server can execute CGI scripts based on file extension configuration. This allows dynamic content generation (for example, using `.py` scripts) alongside static file serving without changing existing route behavior. The program will read the script stdoutput, interpret it, and return it to the client as a response.
 
 #### Example Usage
 
@@ -162,14 +148,7 @@ curl --resolve public:8081:127.0.0.1 \
       http://public:8081/hello
 ```
 
-- Executes `hello.py` with the request body available in `stdin`.
-- Returns CGI-generated headers and content to the browser or client.
-
-#### Notes
-
-- The server validates that the `Host` header matches the configured `server_name` and port.
-- If no interpreter is configured for a file extension, a `502 Bad Gateway` is returned.
-- Handles both chunked and unchunked requests automatically.
+- Note that the server validates whether or not the `Host` and `Port` sections of the URL (Host:Port) match the configured `server_name` and `port`.
 
 ## Architecture
 
