@@ -84,7 +84,7 @@ upload_dir = "uploads"
 | `root`                | Document root directory               | `./routes`  |
 | `client_timeout_secs` | Idle connection timeout               | `30`        |
 
-## Usage Examples
+## Usage Examples and Features
 
 ### Static File Serving
 
@@ -144,11 +144,46 @@ The server can execute CGI scripts based on file extension configuration. This a
 curl --resolve public:8081:127.0.0.1 \
       -X POST \
       -H "Content-Type: application/x-www-form-urlencoded" \
-      --data "name=Johannes&age=30" \
+      --data "name=Johannes&age=23" \
       http://public:8081/hello
 ```
 
 - Note that the server validates whether or not the `Host` and `Port` sections of the URL (Host:Port) match the configured `server_name` and `port`.
+
+### Custom Error Pages
+
+`Localhost` supports **custom HTTP error pages** for any status code you wish to override. This allows you to serve user-friendly HTML pages instead of generic server responses.
+
+#### How It Works
+
+- Place custom error pages under the server's `root/errors/` directory.
+- Map status codes to filenames in the configuration:
+
+```toml
+[servers.errors."404"]
+filename = "not_found.html"
+
+[servers.errors."500"]
+filename = "server_error.html"
+
+[servers.errors."405"]
+filename = "method_not_allowed.html"
+```
+
+- The server automatically serves these pages when the corresponding HTTP error occurs.
+- If a custom page is missing, the server falls back to a minimal default HTML page.
+
+#### Example File Structure
+
+```
+root/
+├── errors/
+│   ├── not_found.html
+│   ├── server_error.html
+│   └── method_not_allowed.html
+├── index.html
+└── ...
+```
 
 ## Architecture
 

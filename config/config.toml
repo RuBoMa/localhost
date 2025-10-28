@@ -44,7 +44,7 @@ filename = "server_error.html"
 filename = "method_not_allowed.html"
 
 # Map extensions to CGI interpreter/command
-# Presumably should use python3 instead of python if running on mac
+# Use "python3" for mac, "python" for windows
 [servers.cgi_handlers]
 ".py" = "python3"
 
@@ -55,20 +55,20 @@ server_name = "public"
 root = "root"
 admin_access = false
 
-  [servers.routes."/"]
-  methods = ["GET"]
+[servers.routes."/"]
+methods = ["GET"]
 
-  [servers.routes."/piscine-js"]
-  filename = "./site/index.html"
-  methods = ["GET"]
+[servers.routes."/piscine-js"]
+filename = "./site/index.html"
+methods = ["GET"]
 
-  [servers.routes."/static"]
-  directory = "./site/static"
-  methods = ["GET"]
+[servers.routes."/static"]
+directory = "./site/static"
+methods = ["GET"]
 
-  [servers.routes."/tetris"]
-  directory = "./site2"
-  methods = ["GET"]
+[servers.routes."/tetris"]
+directory = "./site2"
+methods = ["GET"]
 
 [admin]
 username = "admin"
