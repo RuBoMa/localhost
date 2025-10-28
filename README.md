@@ -1,284 +1,372 @@
+# Localhost - Event-Driven HTTP Server
 
-## Development Action List
-- [✓] **Set up Project Skeleton**
-  - [✓] Initialize Cargo project.
-  - [✓] Create directory structure (`src/`, `config/`, `core/`, `http/`, `server/`).
+A high-performance HTTP/1.1 server built with Rust, featuring event-driven I/O using `kqueue` (macOS/BSD), non-blocking connections, multipart file uploads, and virtual host support.
 
-- [✓] **Set up simple port use using config.toml**
-  - [✓] Create `config/mod.rs` for configuration structs.
-  - [✓] Implement basic TOML parsing to read server address and port.
-  - [✓] Print out the configured port to verify parsing works.
+## Features
 
-- [✓] **Set up serverSocket for binding of port**
-  - [✓] Create `server/mod.rs` and `server/server.rs`.
-  - [✓] Implement socket creation, binding, and listening on the configured port.
-  - [✓] Print confirmation of successful binding.
+**Event-driven architecture** - Non-blocking I/O with kernel-level `kqueue` event notification  
+**Concurrent connections** - Efficiently handles hundreds of simultaneous clients  
+**HTTP/1.1 persistent connections** - Keep-alive support with configurable timeouts  
+**Static file serving** - Efficient file delivery from configured root directories  
+**Multipart form uploads** - RFC 2388 compliant file upload handling  
+**Flexible routing** - File serving, directory listing, redirects, and upload handlers  
+**TOML configuration** - Simple, readable server configuration  
+**Connection cleanup** - Proper deregistration of closed sockets  
 
-- [✓] **Set up server struct and keep the port open and poll for incoming**
-  - [✓] Define `Server` struct to hold server state.
-  - [✓] Implement event loop using thread::sleep to simulate polling. Temporary for multi platform compatibility.
-  - [✓] Print incoming connection attempts for verification.
+## Quick Start
 
-- [✓] **Set up connection struct to handle each client connection**
-  - [✓] Create `core/connection.rs` to manage individual connections.
-  - [✓] Accept incoming connections and instantiate `Connection` objects.
-  - [✓] Print raw request for verification.
+### Prerequisites
 
-- [✓] **Set up httpRequest struct and instance one for each client request**
-  - [✓] Create `core/request.rs` to parse HTTP requests.
-  - [✓] Read raw bytes from connection and parse into `Request` struct.
-  - [✓] Print parsed request details for verification.
+- Rust 1.70+ (macOS/BSD)
+- Cargo
 
-- [✓] **Construct Basic HTTP Response**
-  - [✓] Create a simple response struct in `core/response.rs`.
-  - [✓] Send a fixed "Hello World" response.
-  - [✓] Test connection handling.
+### Build
 
-- [✓] **Routing Basic Requests**
-  - [✓] Implement simple routing based on URL paths in `server/route.rs`.
-  - [✓] Dispatch requests accordingly.
+```bash
+cd localhost
+cargo build --release
+```
 
-- [✓] **Serve Static Files**
-  - [✓] Implement logic in `handler/static.rs` to serve files from a directory.
-  - [✓] Map URL paths to file paths.
-  - [✓] Send file contents with proper headers.
-  - [✓] Test with static assets.
+### Run
 
-- [✓] **handle http methods**
-  - [✓] Implement handling for `GET`, `POST`, and `DELETE` methods in `core/request.rs` and `server/server.rs`.
-  - [✓] Validate method support and respond with appropriate status codes for unsupported methods.
+```bash
+cargo run --release
+```
 
-- [ ] **Handle CGI Scripts**
-  - [ ] Implement CGI script execution in `handler/cgi.rs`.
-  - [ ] Map routes to scripts.
-  - [ ] Capture output and return as response.
-  - [ ] Handle environment variables and permissions.
+Expected output:
+```
+[+] Bound to 127.0.0.1:8080
+[+] Bound to 127.0.0.1:8081
+[*] Server initialized
+```
 
-- [ ] **Implement Basic Routing & Dispatch**
-  - [ ] Enhance route matching.
-  - [ ] Dispatch to static, CGI, redirect handlers.
+### Test
 
-- [ ] **Handle Directory Listing and Index Files**
-  - [ ] Serve index files automatically.
-  - [ ] Generate directory listings if needed.
+```bash
+# Simple request
+curl http://127.0.0.1:8080/
 
-- [ ] **Add Support for Redirects**
-  - [ ] Implement URL redirection in `handler/redirect.rs`.
+# Upload file
+curl -F "file=@test.txt" http://127.0.0.1:8080/upload
+```
 
-- [ ] **Implement Graceful Shutdown**
-  - [ ] Capture termination signals.
-  - [ ] Close server gracefully and finish ongoing requests.
+## Configuration
 
-- [ ] **Implement Error Handling**
-  - [ ] Standard server error responses (`404`, `500`, etc.).
-  - [ ] Use in request flow for errors.
+Edit `config/config.toml`:
 
-- [ ] **Support for Advanced Features (Optional)**
-  - [ ] Add session management, cookies, file uploads, etc.
+```toml
+[[servers]]
+server_address = "127.0.0.1"
+ports = [8080, 8081]
+server_name = "localhost"
+root = "./routes"
+client_timeout_secs = 30
 
-- [ ] **Testing & Optimization**
-  - [ ] Write unit and integration tests.
-  - [ ] Optimize routing, file access, concurrency.
+[[servers.routes]]
+path = "/"
+type = "file"
+file = "index.html"
+
+[[servers.routes]]
+path = "/upload"
+type = "upload_dir"
+upload_dir = "uploads"
+```
+
+### Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `server_address` | Bind address | `127.0.0.1` |
+| `ports` | Listen ports (array) | `[8080]` |
+| `server_name` | Virtual host name (Host header match) | `localhost` |
+| `root` | Document root directory | `./routes` |
+| `client_timeout_secs` | Idle connection timeout | `30` |
+
+## Usage Examples
+
+### Static File Serving
+
+```bash
+curl http://127.0.0.1:8080/
+curl http://127.0.0.1:8080/index.html
+curl http://127.0.0.1:8080/style.css
+```
+
+### File Upload
+
+```bash
+# Single file
+curl -F "file=@document.pdf" http://127.0.0.1:8080/upload
+
+# Image upload
+curl -F "file=@image.jpg" http://127.0.0.1:8080/upload
+
+# With custom field name
+curl -F "photo=@picture.png" http://127.0.0.1:8080/upload
+```
+
+Files are saved to the configured `upload_dir` (default: `./uploads`).
+
+### Redirects
+
+```toml
+[[servers.routes]]
+path = "/old-page"
+type = "redirect"
+redirect_to = "/new-page"
+redirect_code = 301  # 301, 302, 307, 308
+```
+
+### Directory Listing
+
+```toml
+[[servers.routes]]
+path = "/files"
+type = "file"
+file = "files/"  # Trailing slash for directory listing
+```
+
+## Architecture
+
+### Event Loop Model
+
+The server uses `kqueue` (kernel event queue) for efficient async I/O:
+
+```
+┌─────────────────────────────────────────┐
+│  Main Event Loop                        │
+│                                         │
+│  1. Block on kevent() until events      │
+│  2. Process triggered events            │
+│  3. Return to step 1                    │
+└─────────────────────────────────────────┘
+         ↓           ↓           ↓
+    Accept      Read           EOF
+    client      data          from client
+         ↓           ↓           ↓
+    Create      Parse      Deregister
+    connection  & route     socket
+```
+
+
+### Request Handling Flow
+
+```
+Raw TCP bytes
+    ↓
+┌─────────────────────┐
+│ Connection Buffer   │  (4096-byte chunks)
+└─────────────────────┘
+    ↓
+┌─────────────────────┐
+│ Request Parser      │  (splits headers/body)
+└─────────────────────┘
+    ↓
+┌─────────────────────┐
+│ Resolve Config      │  (matches Host header)
+└─────────────────────┘
+    ↓
+┌─────────────────────┐
+│ Route Dispatcher    │  (static/upload/redirect)
+└─────────────────────┘
+    ↓
+┌─────────────────────┐
+│ Response Sender     │  (write to socket)
+└─────────────────────┘
+    ↓
+TCP response to client
+```
+
+### Why `kqueue`?
+
+`kqueue` is a scalable kernel event notification system (macOS/BSD):
+
+- **Efficient**: No polling needed; kernel wakes server only when events occur
+- **Scalable**: O(1) to monitor thousands of file descriptors
+- **Low-level control**: Fine-grained event filtering (read, write, errors)
+
+Alternative on Linux: `epoll`  
+Alternative on Windows: `IOCP`
+
+### Unsafe FFI Justification
+(Foreign Function Interface)
+This codebase uses `unsafe` blocks **only** for C FFI to `libc`:
+
+```rust
+// Example: Creating kernel event queue
+unsafe { kqueue() }  // Returns fd, or -1 on error
+
+// Example: Registering event with kernel
+unsafe { kevent(...) }  // Kernel call; must pass C-compatible pointers
+```
+
+**Safety guarantee**: No memory unsafety in safe Rust code. Unsafe blocks are minimal, auditable, and necessary for OS interaction.
 
 ---
 
-# HTTP 1.1
+Server responses:
+- **413 Payload Too Large**: If file exceeds limit
+- **400 Bad Request**: If multipart parsing fails
+- **200 OK**: If upload succeeds
 
-HTTP (Hypertext Transfer Protocol) is an application‑level, stateless, request/response protocol for distributed, collaborative, hypermedia systems.
+### Supported Upload Methods
 
-In HTTP/1.1, a connection may be used for one or more request/response exchanges, although connections may be closed for a variety of reasons (see section 8.1).2
-
-## HTTP Message Format
-An HTTP message consists of:
-- A start-line
-- Zero or more header fields (also known as "headers"), each consisting of a name followed by a colon (":") and the field value
-- An empty line (i.e., a line with nothing preceding the CRLF) indicating the end of the header fields
-- An optional message body
-
-### Request Message Format
-An HTTP request message from a client to a server includes:
-```
-<method> <request-target> <HTTP-version>CRLF
-<Header-Name>: <value>CRLF
-CRLF
-<optional body>
+**Single file (curl):**
+```bash
+curl -F "file=@myfile.txt" http://127.0.0.1:8080/upload
 ```
 
-```
-POST /index.html HTTP/1.1CRLF
-Host: example.comCRLF
-Content-Length: 13
-CRLF
-name=John+Doe
-```
+### File Storage
 
-### Response Message Format
-An HTTP response message from a server to a client includes:
+Uploaded files are saved to the configured directory with original filenames:
 ```
-<HTTP-version> <status-code> <reason-phrase>CRLF
-<Header-Name>: <value>CRLF
-CRLF
-<optional body>
+uploads/
+  ├─ document.pdf
+  ├─ image.jpg
+  └─ archive.zip
 ```
 
-```
-HTTP/1.1 200 OKCRLF
-Content-Type: text/htmlCRLF
-Content-Length: 20CRLF
-CRLF
-<h1>Hello, World!</h1>
-```
+---
 
-## Methods
-HTTP defines a set of request methods to indicate the desired action to be performed for a given resource. The most commonly used methods are:
-- `GET`: Requests a representation of the specified resource. Requests using GET should only retrieve data.
-- `POST`: Submits data to be processed to a specified resource.
-- `PUT`: Uploads a representation of the specified resource.
-- `DELETE`: Deletes the specified resource.
-- `HEAD`: Asks for a response identical to that of a GET request, but without the response body.
-- `OPTIONS`: Describes the communication options for the target resource.
-- `PATCH`: Applies partial modifications to a resource.
-- `TRACE`: Performs a message loop-back test along the path to the target resource.
-- `CONNECT`: Establishes a tunnel to the server identified by the target resource.
+## Memory Leak Testing
 
-## Status Codes
-HTTP response status codes indicate whether a specific HTTP request has been successfully completed. Responses are grouped in five classes:
-- 1xx (Informational): The request was received, continuing process.
-- 2xx (Successful): The request was successfully received, understood, and accepted.
-- 3xx (Redirection): Further action needs to be taken in order to complete the request.
-- 4xx (Client Error): The request contains bad syntax or cannot be fulfilled.
-- 5xx (Server Error): The server failed to fulfill an apparently valid request.
-Common status codes include:
-- 200 OK: The request has succeeded.
-- 201 Created: The request has been fulfilled and resulted in a new resource being created.
-- 204 No Content: The server successfully processed the request, but is not returning any content.
-- 301 Moved Permanently: The requested resource has been assigned a new permanent URI.
-- 302 Found: The requested resource resides temporarily under a different URI.
-- 400 Bad Request: The server could not understand the request due to invalid syntax.
-- 401 Unauthorized: The request requires user authentication.
-- 403 Forbidden: The server understood the request, but refuses to authorize it.
-- 404 Not Found: The server has not found anything matching the Request-URI.
-- 500 Internal Server Error: The server encountered an unexpected condition that prevented it from fulfilling the request.
-- 502 Bad Gateway: The server, while acting as a gateway or proxy, received an invalid response from the upstream server.
-- 503 Service Unavailable: The server is currently unable to handle the request due to temporary overloading or maintenance of the server.
-- 504 Gateway Timeout: The server, while acting as a gateway or proxy, did not receive a timely response from the upstream server.
+The server is designed for stable memory usage under load. Test it:
 
-## Headers
-HTTP headers allow the client and the server to pass additional information with the request or the response. Common headers include:
-- Content-Type: Indicates the media type of the resource.
-- Content-Length: Indicates the size of the entity-body, in bytes, sent to the recipient.
-- User-Agent: Contains information about the user agent originating the request.
-- Accept: Indicates the media types that are acceptable for the response.
-- Host: Specifies the domain name of the server and (optionally) the TCP port number
-- Authorization: Contains the credentials to authenticate a user-agent with a server.
-- Cookie: Contains stored HTTP cookies previously sent by the server with the Set-Cookie header.
-- Set-Cookie: Sends cookies from the server to the user agent.
-- Cache-Control: Directives for caching mechanisms in both requests and responses.
-- Connection: Controls whether the network connection stays open after the current transaction finishes.
-- Referer: The address of the previous web page from which a link to the currently requested page was followed.
-- Location: Used in redirection or when a new resource has been created.
-- ETag: Provides the current value of the entity tag for the requested variant.
-- Last-Modified: Indicates the date and time at which the origin server believes the resource was last modified.
-- If-Modified-Since: Makes the request conditional: the server will send back the resource only if it has been modified since the specified date.
-- If-None-Match: Makes the request conditional: the server will send back the resource only if the entity tag does not match any of the listed tags.
-- Vary: Indicates the set of request headers that determine whether a cached response can be used rather than requesting a fresh one from the origin server.
-- Transfer-Encoding: Specifies the form of encoding used to safely transfer the entity to the user.
-- Accept-Encoding: Indicates the content-codings that are acceptable in the response.
-- Accept-Language: Indicates the natural languages that are preferred in the response.
-- Origin: Indicates where a fetch originates from.
-- Access-Control-Allow-Origin: Specifies which origins are permitted to read the response.
-- Access-Control-Allow-Methods: Specifies the methods allowed when accessing the resource in response to a preflight request.
-- Access-Control-Allow-Headers: Used in response to a preflight request to indicate which HTTP headers can be used during the actual request.
-- Access-Control-Max-Age: Indicates how long the results of a preflight request can be cached.
-- Content-Encoding: Used to specify any additional content encodings that have been applied to the entity
-- Content-Language: Describes the natural language(s) of the intended audience for the enclosed entity.
-- Content-Disposition: Indicates if the content is expected to be displayed inline in the browser, or as an attachment that is downloaded and saved locally.
-- Retry-After: Indicates how long the user agent should wait before making a follow-up request.
-- Pragma: Implementation-specific headers that may have various effects anywhere along the request-response chain.
-- Server: Contains information about the software used by the origin server to handle the request.
-- Date: Represents the date and time at which the message was originated.
-- Age: The time in seconds the object has been in a proxy cache.
-- Via: Informs the client of proxies through which the response was sent.
-- Warning: A general warning about possible problems with the entity body.
-- TE: Indicates what extension transfer-codings it is willing to accept in the response.
+### Quick Test (Recommended)
 
-Headers are case-insensitive and can be extended with custom headers as needed.
-Header values can be single or multiple, with multiple values separated by commas.
+```bash
+# Terminal 1: Start server
+cargo run --release
 
-Linear white space(LWS) is treated as a single space.
-The Host header field must be sent in all HTTP/1.1 request messages.
-If missing or invalid, server should response with a 400 (Bad Request) status code.
+# Terminal 2: Monitor memory
+top -pid $(pgrep localhost)
 
-
-## Versioning
-HTTP/1.1 is an improvement over HTTP/1.0, introducing several new features and enhancements, including:
-- Persistent connections: Allows multiple requests and responses to be sent over a single connection, reducing latency
-- Chunked transfer encoding: Enables the server to send data in chunks, allowing it to start sending a response before knowing its total size
-- Additional cache control mechanisms: Provides more granular control over caching behavior
-- More status codes: Introduces new status codes to better represent various response scenarios
-- Host header: Requires the Host header in requests, allowing multiple domains to be served from a single IP address
-- Content negotiation: Allows clients and servers to negotiate the best representation of a resource based on factors like language, encoding, and media type
-- Enhanced error handling: Provides more detailed error messages and status codes
-
-## Persistent Connections
-By default, HTTP/1.1 uses persistent connections, meaning that the connection is kept open for multiple requests and responses, reducing latency for subsequent requests. The `Connection` header can be used to manage the persistence of the connection:
-- `Connection: keep-alive`: Indicates that the connection should be kept open for further requests
-- `Connection: close`: Indicates that the connection should be closed after the current request/response
-
-## Chunked Transfer Encoding
-HTTP/1.1 supports chunked transfer encoding, which allows a server to send a response in chunks, enabling it to start sending data before knowing the total size of the response. This is indicated by the `Transfer-Encoding: chunked` header. Each chunk is preceded by its size in bytes (in hexadecimal), followed by a CRLF, the chunk data, and another CRLF. The end of the response is indicated by a chunk of size zero.
-```
-HTTP/1.1 200 OKCRLF
-Content-Type: text/plainCRLF
-Transfer-Encoding: chunkedCRLF
-CRLF
-4CRLF
-WikiCRLF
-5CRLF
-pediaCRLF
-ECRLF
- inCRLF
-chunks.CRLF
-0CRLF
-CRLF
+# Terminal 3: Run load test
+siege -c50 -t30S http://127.0.0.1:8080/
 ```
 
-## Caching
-HTTP/1.1 includes several headers to control caching behavior, allowing clients and servers to specify how responses should be cached and for how long. Common caching headers include:
-- Cache-Control: Directives for caching mechanisms in both requests and responses (e.g., `no-cache`, `no-store`, `max-age`, `public`, `private`).
-- Expires: Specifies the date/time after which the response is considered stale.
-- ETag: Provides a unique identifier for a specific version of a resource, allowing clients to make conditional requests.
-- Last-Modified: Indicates the last modification date of the resource, allowing clients to make conditional requests based on this date.
-- Vary: Indicates the set of request headers that determine whether a cached response can be used rather than requesting a fresh one from the origin server.
+**Expected:** Memory spikes during load, returns to baseline after.
 
-## Security
-HTTP/1.1 does not include built-in security features. However, it can be used in conjunction with TLS (Transport Layer Security) to provide secure communication over the network. When HTTP is used over TLS, it is referred to as HTTPS (HTTP Secure). HTTPS ensures data integrity, confidentiality, and authentication between the client and server.
+### Full Testing Guide
+
+See **[MEMORY_TESTING.md](./MEMORY_TESTING.md)** for 7 methods including:
+- Real-time `top` monitoring
+- `watch` command loops
+- Siege load profiles
+- Manual curl testing
+- Upload-specific testing
+- Connection lifecycle testing
+- macOS Instruments profiling
+
+---
+
+## Performance Optimization
+
+### Load Testing
+
+**Light test (initial check):**
+```bash
+siege -c10 -t15S http://127.0.0.1:8080/
+```
+
+**Medium load (realistic):**
+```bash
+siege -c50 -t30S http://127.0.0.1:8080/
+```
+
+**Heavy benchmark:**
+```bash
+siege -c100 -t60S http://127.0.0.1:8080/
+```
+
+**Aggressive (stress test):**
+```bash
+siege -b http://127.0.0.1:8080/  # Press Ctrl+C to stop
+```
+
+---
+
+## Project Structure
+
+```
+localhost/
+├── Cargo.toml                 # Rust dependencies and metadata
+├── Cargo.lock                 # Locked dependency versions
+├── config/
+│   └── config.toml           # Server configuration
+├── routes/
+│   ├── index.html            # Default page
+│   └── uploads/              # Upload destination
+├── src/
+│   ├── lib.rs                # Library root
+│   ├── main.rs               # Binary entry point
+│   ├── config/
+│   │   └── mod.rs            # Config loading and validation
+│   ├── core/
+│   │   ├── mod.rs            # Core types
+│   │   ├── connection.rs      # TCP connection wrapper
+│   │   ├── request.rs         # HTTP request parsing
+│   │   ├── response.rs        # HTTP response builder
+│   │   ├── multipart.rs       # Multipart form parsing
+│   │   └── utils.rs           # Utility functions
+│   ├── http/
+│   │   ├── mod.rs            # HTTP types
+│   │   ├── cookies.rs         # Cookie handling
+│   │   ├── session.rs         # Session management
+│   │   └── upload.rs          # Upload handling
+│   └── server/
+│       ├── mod.rs            # Server types
+│       ├── server.rs          # Main server logic
+│       ├── event_loop.rs      # kqueue event loop
+│       ├── server_socket.rs   # Socket binding
+│       ├── route.rs           # Route definitions
+│       ├── error.rs           # Error types
+│       ├── default_html.rs    # Default error pages
+│       └── handler/
+│           ├── mod.rs         # Route handler types
+│           ├── static_handler.rs  # Static file serving
+│           ├── cgi.rs         # CGI execution
+│           ├── directory.rs    # Directory listing
+│           └── redirect.rs     # HTTP redirects
+└── target/                    # Build artifacts
+```
+
+---
+
+## Dependencies
+
+Key crates used:
+
+- **`libc`** - C FFI for kqueue/kevent
+- **`toml`** - TOML configuration parsing
+- **`serde`** - Serialization framework
+
+See `Cargo.toml` for complete list.
+
+---
 
 ## References
-- [RFC 2616 - Hypertext Transfer Protocol -- HTTP/1.1](https://datatracker.ietf.org/doc/html/rfc2616)
-- [MDN Web Docs - HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP)
-- [W3C - HTTP/1.1](https://www.w3.org/Protocols/rfc2616/rfc2616.html)
-- [IETF - HTTP/1.1](https://www.ietf.org/rfc/rfc2616.txt)
-- [Wikipedia - HTTP](https://en.wikipedia.org/wiki/HTTP)
-- [HTTP Status Codes](https://httpstatuses.com/)
-- [HTTP Headers](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers)
-- [Understanding HTTP](https://www.tutorialspoint.com/http/index.htm)
-- [HTTP/1.1 Specification](https://tools.ietf.org/html/rfc2616)
-- [HTTP/1.1 vs HTTP/2](https://www.keycdn.com/blog/http2-vs-http1)
-- [HTTP/1.1 Persistent Connections](https://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html#sec8.1)
-- [Chunked Transfer Encoding](https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.6.1)
-- [Caching in HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching)
-- [Security Considerations for HTTP](https://www.ietf.org/rfc/rfc7231.html#section-8.8)
-- [Using TLS with HTTP](https://tools.ietf.org/html/rfc2818)
-- [HTTP/1.1 Message Syntax and Routing](https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html)
-- [HTTP/1.1 Semantics and Content](https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html)
-- [HTTP/1.1 Conditional Requests](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.25)
-- [HTTP/1.1 Range Requests](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.35)
-- [HTTP/1.1 Content Negotiation](https://www.w3.org/Protocols/rfc2616/rfc2616-sec12.html)
-- [HTTP/1.1 Proxy and Tunneling](https://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html)
-- [HTTP/1.1 Upgrade Mechanism](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.42)
-- [HTTP/1.1 Internationalization](https://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.4)
-- [HTTP/1.1 Performance Considerations](https://www.w3.org/Protocols/rfc2616/rfc2616-sec8.html#sec8.1.4)
-- [HTTP/1.1 Error Handling](https://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html)
-- [HTTP/1.1 Best Practices](https://www.oreilly.com/library/view/high-performance-web/9781449382610/ch04.html)
-- [HTTP/1.1 Troubleshooting](https://www.keycdn.com/support/http-troubleshooting)
+
+- **HTTP/1.1 Specification**: RFC 7230-7235
+- **Multipart Form Data**: RFC 2388
+- **kqueue Manual**: `man kqueue` on macOS/BSD
+- **Rust async patterns**: https://tokio.rs/tokio/tutorial/select
+- **Event-driven architecture**: https://www.ably.io/topic/event-driven-architecture
+
+---
+
+## Support
+
+For issues, questions, or feedback:
+
+1. Check [MEMORY_TESTING.md](./MEMORY_TESTING.md) for diagnostics
+2. Review server logs in terminal output
+3. Test with: `curl -v http://127.0.0.1:8080/`
+4. Monitor with: `top -pid $(pgrep localhost)`
+
+---
+
+**Last Updated:** October 27, 2025  
+**Server Version:** 1.0  
+**Platform:** macOS/BSD with `kqueue`
