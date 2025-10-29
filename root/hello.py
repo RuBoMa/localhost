@@ -26,6 +26,7 @@ def main():
         f"Some request info:\r\n"
         f"SERVER_NAME={server_name}\nSERVER_PORT={server_port}\nMETHOD={method}\nSCRIPT_NAME={script_name}\nQUERY={query}\n"
         f"BODY_LEN={len(body)}\n"
+        f"BODY={body.decode('utf-8', errors='replace')}\n"
     )
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
-use std::collections::HashMap;
-use std::io;
+﻿use std::collections::HashMap;
+use std::io::{self};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -9,7 +9,12 @@ use crate::core::{Request, Response};
 use crate::server::default_html::default_index_response;
 use crate::server::error_response_from_config;
 use crate::server::handler::{
-    execute_handler, generate_directory_listing, resolve_target_path, serve_static_file, Admin,
+    execute_handler,
+    generate_directory_listing,
+    resolve_cgi_interpreter,
+    resolve_target_path,
+    serve_static_file,
+    Admin,
 };
 use crate::server::match_route;
 use crate::server::run_loop;
@@ -156,7 +161,7 @@ impl Server {
                         return serve_static_file(&root_dir.join("login.html"), config);
                     }
                 } else {
-                    // Any other admin route → redirect to login
+                    // Any other admin route redirect to login
                     return Response::redirect("/login".to_string(), 302);
                 }
             }
@@ -221,10 +226,15 @@ impl Server {
             );
         }
 
-        // Step 8: Static file handling (GET/HEAD → filename)
+        // Step 8: Static file handling (GET/HEAD filename)
         if let Some(filename) = &route_cfg.filename {
-            if !matches!(request.method.as_str(), "GET" | "HEAD") {
-                return error_response_from_config(405, config);
+            let full_path = root_dir.join(filename);
+
+            // Only enforce for non-cgi files
+            if resolve_cgi_interpreter(&full_path, config).is_none() {
+                if !matches!(request.method.as_str(), "GET" | "HEAD") {
+                    return error_response_from_config(405, config);
+                }
             }
 
             let full_path = root_dir.join(filename);
@@ -232,7 +242,7 @@ impl Server {
         }
 
         // Step 9: Misconfiguration. serve default index
-        default_index_response(&config.routes)
+        default_index_response(&self.sockets)
     }
 
     pub fn handle_client(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
@@ -256,6 +266,7 @@ impl Server {
 
                     if close_connection {
                         client.stream.shutdown(std::net::Shutdown::Both)?;
+                        println!("[*] Close connection to  {}", client.peer_addr);
                         return Ok(false); // stop handling
                     }
                 }
