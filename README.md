@@ -141,11 +141,11 @@ The server can execute CGI scripts based on file extension configuration. This a
 #### Example Usage
 
 ```bash
-curl --resolve public:8081:localhost \
-      -X POST \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      --data "name=Johannes&age=23" \
-      http://public:8081/hello
+curl --resolve public:8081:127.0.0.1 \
+     -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"animal":"Cat","age":3}' \
+     http://public:8081/hello
 ```
 
 - Note that the server validates whether or not the `Host` and `Port` sections of the URL (Host:Port) match the configured `server_name` and `port`.
