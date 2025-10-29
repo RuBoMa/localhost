@@ -272,9 +272,6 @@ impl Server {
     }
 
     pub fn handle_client_write(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
-        use std::{io, thread, time::Duration};
-        thread::sleep(Duration::from_micros(50));
-
         match client.flush_write_buffer() {
             Ok(true) => {
                 Ok(true)
