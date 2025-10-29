@@ -8,7 +8,6 @@ pub fn default_index_response(sockets: &Vec<ServerSocket>) -> Response {
 <head>
     <meta charset="utf-8">
     <title>Registered Servers & Routes</title>
-    <link rel="stylesheet" type="text/css" href="/static/style.css">
 </head>
 <body>
     <h1>Registered Servers & Routes</h1>

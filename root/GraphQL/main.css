@@ -1,0 +1,343 @@
+@import url('https://fonts.googleapis.com/css?family=Montserrat:400,800');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Montserrat", sans-serif;
+}
+
+html,body{
+    overscroll-behavior: none;
+    scroll-behavior: smooth; /* Smooth scrolling */
+}
+/* --------------  */
+
+#main-content {
+    height: 90%;
+    border: 2px solid rgba(255, 255, 255, .2);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 10px rgba(0, 0, 0, .2);
+    border-radius: 10px;
+    display: flex; 
+    flex-direction: column; 
+    gap: 20px; 
+    padding: 20px; 
+    margin-top: 60px;
+    margin-bottom: 70px;
+} 
+
+
+/* Row styling */
+#rowA, #rowB, #rowC {
+    display: flex;
+    align-items: center; 
+    gap: 24px;
+    border: 2px solid #555;            
+    border-radius: 12px;                 
+    margin: 0 auto;                    
+    padding: 16px;       
+    width: calc(100vw - 9vw);   
+    max-width: 900px;                      
+    box-shadow: 0 2px 12px rgba(98, 22, 212, 0.06); 
+    transition: box-shadow 0.2s;
+}
+
+#rowD {
+    display: flex;
+    flex-direction: column;    
+    align-items: center;       
+    justify-content: center;   
+    border: 2px solid #555;            
+    border-radius: 12px;  
+    color: #333;               
+    margin: 0 auto;                    
+    padding: 16px;       
+    width: 100%;   
+    box-shadow: 0 2px 12px rgba(98, 22, 212, 0.06); 
+    box-sizing: border-box;
+    transition: padding 0.2s, border-radius 0.2s;
+}
+
+#auditRatioBig span {
+    display: block;
+}
+
+#graphExp {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#graphExp svg {
+    transform: translateX(33px); 
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    display: block;
+}
+
+#rowD svg {
+    width: 100%;
+    max-width: 850px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
+
+#colA, #colB, #colC, #colD{
+    text-align: center;
+    gap: 24px;
+    margin: 0 auto;                    
+    padding: 16px;       
+    width: calc(100vw - 9vw);   
+    max-width: 900px;      
+    border-radius: 8px;                
+    transition: box-shadow 0.2s;
+}
+
+#colA{
+    flex: 6;
+    margin-left: 30px;
+}
+
+#colB {
+    flex: 4;
+    margin-left: 0;
+    margin-right: 30px;
+    padding: 0 !important;
+}
+
+#colC {
+    flex: 6;
+    margin-right: 30px;
+    text-align: right;
+}
+
+#colD {
+    flex: 4;
+    margin-right: 40px;
+}
+
+#colA, #colC h1 {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+h2 {
+    font-size: 1.7rem;
+    color: #333;
+    margin-top: 20px;
+}
+
+#colA p {
+    font-size: 1.2rem;
+    color: #333;
+    line-height: 1.5;
+}
+
+#colC p {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.5;
+    margin-top: 5px;
+}
+
+#userInfo, #dataInfo {
+    align-items: center;   
+    justify-content: center; 
+    text-align: center;
+    padding: 10px; 
+    box-sizing: border-box;
+}
+
+.avatar-img {
+    width: 100%;
+    max-width: 350px;    
+    aspect-ratio: 1 / 1; 
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0 2px 8px #0002;
+    display: block;
+    margin: 0 auto;
+    transition: max-width 0.2s;
+}
+
+/* Responsive adjustment for smaller screens */
+@media (max-width: 600px) {
+    .avatar-img {
+        max-width: 300px;
+    }
+}
+
+#userAvatar{
+    width: 100%;
+    max-width: 350px;
+    height: auto;
+    aspect-ratio: 1 / 1; 
+    object-fit: cover;
+    border-radius: 50%;
+    background: #f3f3f3;
+    box-shadow: 0 2px 8px #0002;
+    display: block;
+    margin: 0 auto;
+    transition: max-width 0.2s;
+}
+
+#auditRatioBig {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+/* ---------------- */
+
+/* Tooltip Styling */
+.marker-group .svg-tooltip {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.marker-group:hover .svg-tooltip,
+.marker-group:focus .svg-tooltip {
+    opacity: 1;
+}
+
+.marker-group .svg-tooltip rect {
+    fill: whitesmoke;
+    opacity: 0.9;
+    stroke-width: 1;
+    filter: drop-shadow(0 2px 8px rgba(50,30,80,0.10));
+}
+
+/* ---------------- */
+
+/* Navbar Styling */
+#nav-bar {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 10px 20px; 
+    background-color: transparent; 
+    color: #333; 
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1); 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    z-index: 1000;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    margin-left: 45px;
+}
+
+#nav-bar a {
+    color: #2F343B; 
+    text-decoration: underline;
+    font-weight: bold;
+    margin-left: 6px;
+    transition: color 0.2s;
+}
+
+#logout-button {
+    background-color: #D69A6D;
+    color: #4e5561; 
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 12px;
+    margin-right: 50px;
+    cursor: pointer;
+}
+
+#logout-button:hover {
+    background-color: #8a68cdcf; 
+}
+
+/* Footer */
+
+#footer {
+    display: flex;
+    flex-wrap: wrap; 
+    justify-content: space-between;           
+    align-items: center;              
+    padding: 10px 20px;
+    background-color: #F6E7CE ;
+    opacity: 0.8; 
+    color: #333;
+    box-shadow: 0px -2px 6px rgba(0, 0, 0, 0.06); 
+    font-size: 1rem;
+    min-height: 24px;
+    margin-top: 30px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    z-index: 1000;
+}
+
+#footer p {
+    margin-left: 50px;
+    font-size: 16px;
+}
+
+#footer nav ul {
+    display: flex;
+    list-style: none;
+    align-items: center; 
+    margin: 0 40px;
+    padding: 0 20px;
+    gap: 10px;
+}
+
+#footer nav ul li a {
+    color: #4e5561;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    transition: color 0.3s ease;
+    display: flex;
+    align-items: center; 
+    transition: color 0.3s ease;
+}
+
+#footer nav ul li a:hover {
+    color: #999;
+    text-decoration: underline;
+}
+
+
+/* Responsiveness for Mobile */
+
+@media (max-width: 600px) {
+    #rowA, #rowC, #rowB, #rowD {
+        width: 98vw;
+        max-width: 98vw;
+        padding: 8px;
+    }
+}
+
+/*
+        lineColor: #8968CD  
+        gridColor: #BFA980  
+        textColor: #333
+        checkpoint: #FFB7B2
+        piscine: #BFA2DB
+        project: #AEEBFF
+        Gold: #D69A6D (Bronze-Gold)
+        Gunmetal: #A3A8A3 (Deep Platinum/Gunmetal)
+        Champagne: Platinum: #F6E7CE
+        Rose Gold:	#B76E79
+        Pastel Blue: #A7C7E7
+        pastel purple: #BFA2DB
+        Soft Rose Gold	#DEA193	Lighter, more pastel rose gold 
+        Light Rose Gold	#ECC5C0
+        Blush	#DE5D83	Pinkish accent, pairs well with rose gold
+        Graphite — #2F343B
+        Steel Gray — #6E7580
+*/

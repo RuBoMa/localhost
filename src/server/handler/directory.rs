@@ -10,7 +10,6 @@ pub fn generate_directory_listing(dir: &Path, base_url_path: &str, upload_allowe
 <head>
 <meta charset="utf-8">
 <title>Directory Listing</title>
-<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <h1>Directory Listing</h1>
