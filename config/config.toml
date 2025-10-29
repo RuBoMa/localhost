@@ -7,41 +7,41 @@ server_name = "localhost"
 root = "root"
 admin_access = true
 
-  # Default route: homepage / list of routes
-  [servers.routes."/"]
-  methods = ["GET"]
+# Default route: homepage / list of routes
+[servers.routes."/"]
+methods = ["GET"]
 
-  # Login redirect: example, always allowed
-  [servers.routes."/login"]
-  filename = "login.html"
-  methods = ["GET", "POST"]
+# Login redirect: example, always allowed
+[servers.routes."/login"]
+filename = "login.html"
+methods = ["GET", "POST"]
 
-  # Upload / root directory listing
-  [servers.routes."/root"]
-  directory = ""
-  directory_listing = true
-  upload_dir = ""
-  methods = ["GET", "POST", "DELETE"]
+# Upload / root directory listing
+[servers.routes."/root"]
+directory = ""
+directory_listing = true
+upload_dir = ""
+methods = ["GET", "POST", "DELETE"]
 
-  [servers.routes."/static"]
-  directory = "static"
-  directory_listing = true
-  methods = ["GET"]
+[servers.routes."/static"]
+directory = "static"
+directory_listing = true
+methods = ["GET"]
 
-  # Custom error pages, placed under "{root}/errors/"
-  [servers.errors."404"]
-  filename = "not_found.html"
+# Custom error pages, placed under "{root}/errors/"
+[servers.errors."404"]
+filename = "not_found.html"
 
-  [servers.errors."500"]
-  filename = "server_error.html"
+[servers.errors."500"]
+filename = "server_error.html"
 
-  [servers.errors."405"]
-  filename = "method_not_allowed.html"
+[servers.errors."405"]
+filename = "method_not_allowed.html"
 
-  # Map extensions to CGI interpreter/command
-  # Presumably should use python3 instead of python if running on mac
-  [servers.cgi_handlers]
-  ".py" = "python3"
+# Map extensions to CGI interpreter/command
+# Use "python3" for mac, "python" for windows
+[servers.cgi_handlers]
+".py" = "python3"
 
   [[servers]]
   server_address = "127.0.0.1"
@@ -50,35 +50,35 @@ admin_access = true
   root = "root"
   admin_access = false
 
-  [servers.routes."/"]
-  methods = ["GET"]
+[servers.routes."/"]
+methods = ["GET"]
 
-  [servers.routes."/piscine-js"]
-  filename = "./site/index.html"
-  methods = ["GET"]
+[servers.routes."/piscine-js"]
+filename = "./site/index.html"
+methods = ["GET"]
 
-  [servers.routes."/static"]
-  directory = "./site/static"
-  methods = ["GET"]
+[servers.routes."/static"]
+directory = "./site/static"
+methods = ["GET"]
 
-  [servers.routes."/hello"]
-  filename = "./hello.py"
+[servers.routes."/hello"]
+filename = "./hello.py"
 
-  [servers.routes."/broken"]
-  filename = "./no_response.py"
+[servers.routes."/broken"]
+filename = "./no_response.py"
 
-  # Map extensions to CGI interpreter/command
-  # Run using value "python3" if on mac, "python" if on windows
-  [servers.cgi_handlers]
-  ".py" = "python3"
+# Map extensions to CGI interpreter/command
+# Run using value "python3" if on mac, "python" if on windows
+[servers.cgi_handlers]
+".py" = "python3"
 
-  [servers.routes."/tetris"]
-  directory = "./site2"
-  methods = ["GET"]
+[servers.routes."/tetris"]
+directory = "./site2"
+methods = ["GET"]
 
-  [servers.routes."/tetris_2"]
-  directory = "./site3"
-  methods = ["GET"]
+[servers.routes."/tetris_2"]
+directory = "./site3"
+methods = ["GET"]
 
   [servers.routes."/GraphQL"]
   directory = "./GraphQL"
