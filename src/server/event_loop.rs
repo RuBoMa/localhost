@@ -1,7 +1,7 @@
 use std::os::fd::{RawFd, AsRawFd};
 use std::time::Instant;
 use std::io;
-use libc::{kqueue, kevent, kevent64_s, EV_ADD, EV_DELETE, EV_ENABLE, EVFILT_READ, EVFILT_WRITE, EV_CLEAR};
+use libc::{kqueue, kevent, kevent64_s, EV_ADD, EV_DELETE, EV_ENABLE, EVFILT_READ, EVFILT_WRITE};
 use crate::server::Server;
 
 /// Create a new kqueue descriptor
@@ -45,12 +45,12 @@ pub fn register_event(kqueue: RawFd, fd: RawFd, filter: i16, flags: u16) -> std:
 
 /// Register a read event for a given fd
 pub fn register_read(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
-    register_event(kqueue, fd, EVFILT_READ, EV_ADD | EV_ENABLE | EV_CLEAR)
+    register_event(kqueue, fd, EVFILT_READ, EV_ADD | EV_ENABLE)
 }
 
 /// Register a write event for a given fd
 pub fn register_write(kqueue: RawFd, fd: RawFd) -> io::Result<()> {
-    register_event(kqueue, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE | EV_CLEAR)
+    register_event(kqueue, fd, EVFILT_WRITE, EV_ADD | EV_ENABLE)
 }
 
 /// Deregister a read event
@@ -121,7 +121,6 @@ pub fn process_event(server: &mut Server, kqueue: RawFd, ev: &kevent64_s) {
                 client.write_registered = false;
 
                 if client.should_close {
-                    println!("[*] Closing connection to {} (Connection: close)", client.peer_addr);
                     let _ = client.stream.shutdown(std::net::Shutdown::Both);
                     let _ = deregister_all(kqueue, fd);
                     return;
@@ -129,7 +128,6 @@ pub fn process_event(server: &mut Server, kqueue: RawFd, ev: &kevent64_s) {
             }
             server.clients.push(client);
         } else {
-            println!("[*] Closing connection to {} (Connection: close)", client.peer_addr);
             // Deregister both read and write for closed client
             let _ = deregister_all(kqueue, fd);
         }

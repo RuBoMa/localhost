@@ -248,7 +248,6 @@ impl Server {
     pub fn handle_client_read(&mut self, client: &mut ClientConnection) -> io::Result<bool> {
         match client.read_into_buffer() {
             Ok(0) => {
-                println!("[*] Client {} closed the connection", client.peer_addr);
                 return Ok(false); // connection closed
             }
             Ok(_) => {
