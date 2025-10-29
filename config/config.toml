@@ -37,12 +37,6 @@ filename = "server_error.html"
 [servers.errors."405"]
 filename = "method_not_allowed.html"
 
-[servers.errors."500"]
-filename = "server_error.html"
-
-[servers.errors."405"]
-filename = "method_not_allowed.html"
-
 # Map extensions to CGI interpreter/command
 # Use "python3" for mac, "python" for windows
 [servers.cgi_handlers]

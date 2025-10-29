@@ -36,8 +36,8 @@ cargo run --release
 Expected output:
 
 ```
-[+] Bound to 127.0.0.1:8080
-[+] Bound to 127.0.0.1:8081
+[+] Bound to localhost:8080
+[+] Bound to localhost:8081
 [*] Server initialized
 ```
 
@@ -45,10 +45,10 @@ Expected output:
 
 ```bash
 # Simple request
-curl http://127.0.0.1:8080/
+curl http://localhost:8080/
 
 # Upload file
-curl -F "file=@test.txt" http://127.0.0.1:8080/upload
+curl -F "file=@test.txt" http://localhost:8080/upload
 ```
 
 ## Configuration
@@ -57,7 +57,7 @@ Edit `config/config.toml`:
 
 ```toml
 [[servers]]
-server_address = "127.0.0.1"
+server_address = "localhost"
 ports = [8080, 8081]
 server_name = "localhost"
 root = "./routes"
@@ -78,7 +78,7 @@ upload_dir = "uploads"
 
 | Option                | Description                           | Default     |
 | --------------------- | ------------------------------------- | ----------- |
-| `server_address`      | Bind address                          | `127.0.0.1` |
+| `server_address`      | Bind address                          | `localhost` |
 | `ports`               | Listen ports (array)                  | `[8080]`    |
 | `server_name`         | Virtual host name (Host header match) | `localhost` |
 | `root`                | Document root directory               | `./routes`  |
@@ -89,22 +89,22 @@ upload_dir = "uploads"
 ### Static File Serving
 
 ```bash
-curl http://127.0.0.1:8080/
-curl http://127.0.0.1:8080/index.html
-curl http://127.0.0.1:8080/style.css
+curl http://localhost:8080/
+curl http://localhost:8080/index.html
+curl http://localhost:8080/style.css
 ```
 
 ### File Upload
 
 ```bash
 # Single file
-curl -F "file=@document.pdf" http://127.0.0.1:8080/upload
+curl -F "file=@document.pdf" http://localhost:8080/upload
 
 # Image upload
-curl -F "file=@image.jpg" http://127.0.0.1:8080/upload
+curl -F "file=@image.jpg" http://localhost:8080/upload
 
 # With custom field name
-curl -F "photo=@picture.png" http://127.0.0.1:8080/upload
+curl -F "photo=@picture.png" http://localhost:8080/upload
 ```
 
 Files are saved to the configured `upload_dir` (default: `./uploads`).
@@ -141,7 +141,7 @@ The server can execute CGI scripts based on file extension configuration. This a
 #### Example Usage
 
 ```bash
-curl --resolve public:8081:127.0.0.1 \
+curl --resolve public:8081:localhost \
       -X POST \
       -H "Content-Type: application/x-www-form-urlencoded" \
       --data "name=Johannes&age=23" \
@@ -274,7 +274,7 @@ Server responses:
 **Single file (curl):**
 
 ```bash
-curl -F "file=@myfile.txt" http://127.0.0.1:8080/upload
+curl -F "file=@myfile.txt" http://localhost:8080/upload
 ```
 
 ### File Storage
@@ -304,7 +304,7 @@ cargo run --release
 top -pid $(pgrep localhost)
 
 # Terminal 3: Run load test
-siege -c50 -t30S http://127.0.0.1:8080/
+siege -c50 -t30S http://localhost:8080/
 ```
 
 **Expected:** Memory spikes during load, returns to baseline after.
@@ -330,25 +330,25 @@ See **[MEMORY_TESTING.md](./MEMORY_TESTING.md)** for 7 methods including:
 **Light test (initial check):**
 
 ```bash
-siege -c10 -t15S http://127.0.0.1:8080/
+siege -c10 -t15S http://localhost:8080/
 ```
 
 **Medium load (realistic):**
 
 ```bash
-siege -c50 -t30S http://127.0.0.1:8080/
+siege -c50 -t30S http://localhost:8080/
 ```
 
 **Heavy benchmark:**
 
 ```bash
-siege -c100 -t60S http://127.0.0.1:8080/
+siege -c100 -t60S http://localhost:8080/
 ```
 
 **Aggressive (stress test):**
 
 ```bash
-siege -b http://127.0.0.1:8080/  # Press Ctrl+C to stop
+siege -b http://localhost:8080/  # Press Ctrl+C to stop
 ```
 
 ---
@@ -428,7 +428,7 @@ For issues, questions, or feedback:
 
 1. Check [MEMORY_TESTING.md](./MEMORY_TESTING.md) for diagnostics
 2. Review server logs in terminal output
-3. Test with: `curl -v http://127.0.0.1:8080/`
+3. Test with: `curl -v http://localhost:8080/`
 4. Monitor with: `top -pid $(pgrep localhost)`
 
 ---
