@@ -47,10 +47,10 @@ impl ServerSocket {
         loop {
             match self.listener.accept() {
                 Ok((stream, peer_addr)) => {
-                    println!(
+                    /* println!(
                         "[*] Accepted connection from {} on {}",
                         peer_addr, self.addr
-                    );
+                    ); */
                     match ClientConnection::new(stream, peer_addr) {
                         Ok(client) => new_clients.push(client),
                         Err(e) => eprintln!("[!] Failed to create client connection: {}", e),
