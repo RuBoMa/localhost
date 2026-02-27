@@ -1,0 +1,501 @@
+    Finished `release` profile [optimized] target(s) in 0.01s
+     Running `target/release/localhost`
+Warning: Route '/' has no directory, redirect, upload_dir, or filename defined. Default index will be served.
+Warning: Route '/' has no directory, redirect, upload_dir, or filename defined. Default index will be served.
+Config {
+    servers: [
+        ServerConfig {
+            server_address: "127.0.0.1",
+            ports: [
+                8080,
+            ],
+            server_name: Some(
+                "localhost",
+            ),
+            root: "root",
+            routes: {
+                "/login": RouteConfig {
+                    filename: Some(
+                        "login.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                            "POST",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/root": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "",
+                    ),
+                    directory_listing: true,
+                    methods: Some(
+                        [
+                            "GET",
+                            "POST",
+                            "DELETE",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: Some(
+                        "",
+                    ),
+                },
+                "/static": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "static",
+                    ),
+                    directory_listing: true,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/": RouteConfig {
+                    filename: None,
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+            },
+            cgi_handlers: {
+                ".py": "python3",
+            },
+            errors: {
+                "500": RouteConfig {
+                    filename: Some(
+                        "server_error.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "404": RouteConfig {
+                    filename: Some(
+                        "not_found.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "405": RouteConfig {
+                    filename: Some(
+                        "method_not_allowed.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
+            },
+            admin_access: true,
+        },
+        ServerConfig {
+            server_address: "127.0.0.1",
+            ports: [
+                8081,
+            ],
+            server_name: Some(
+                "public",
+            ),
+            root: "root",
+            routes: {
+                "/": RouteConfig {
+                    filename: None,
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/piscine-js": RouteConfig {
+                    filename: Some(
+                        "./site/index.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/tetris": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "./site2",
+                    ),
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/hello": RouteConfig {
+                    filename: Some(
+                        "./hello.py",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/static": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "./site/static",
+                    ),
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/GraphQL": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "./GraphQL",
+                    ),
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/broken": RouteConfig {
+                    filename: Some(
+                        "./no_response.py",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/tetris_2": RouteConfig {
+                    filename: None,
+                    directory: Some(
+                        "./site3",
+                    ),
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
+            },
+            cgi_handlers: {
+                ".py": "python3",
+            },
+            errors: {},
+            admin_access: false,
+        },
+    ],
+    client_timeout_secs: 30,
+    admin: AdminConfig {
+        username: "admin",
+        password: "pewpew321",
+    },
+}
+[+] Bound to 127.0.0.1:8080
+[+] Bound to 127.0.0.1:8081
+Server {
+    sockets: [
+        ServerSocket {
+            addr: 127.0.0.1:8080,
+            listener: TcpListener {
+                addr: 127.0.0.1:8080,
+                fd: 3,
+            },
+            configs: [
+                ServerConfig {
+                    server_address: "127.0.0.1",
+                    ports: [
+                        8080,
+                    ],
+                    server_name: Some(
+                        "localhost",
+                    ),
+                    root: "root",
+                    routes: {
+                        "/login": RouteConfig {
+                            filename: Some(
+                                "login.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                    "POST",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/root": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "",
+                            ),
+                            directory_listing: true,
+                            methods: Some(
+                                [
+                                    "GET",
+                                    "POST",
+                                    "DELETE",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: Some(
+                                "",
+                            ),
+                        },
+                        "/static": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "static",
+                            ),
+                            directory_listing: true,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/": RouteConfig {
+                            filename: None,
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                    },
+                    cgi_handlers: {
+                        ".py": "python3",
+                    },
+                    errors: {
+                        "500": RouteConfig {
+                            filename: Some(
+                                "server_error.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "404": RouteConfig {
+                            filename: Some(
+                                "not_found.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "405": RouteConfig {
+                            filename: Some(
+                                "method_not_allowed.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                    },
+                    admin_access: true,
+                },
+            ],
+        },
+        ServerSocket {
+            addr: 127.0.0.1:8081,
+            listener: TcpListener {
+                addr: 127.0.0.1:8081,
+                fd: 4,
+            },
+            configs: [
+                ServerConfig {
+                    server_address: "127.0.0.1",
+                    ports: [
+                        8081,
+                    ],
+                    server_name: Some(
+                        "public",
+                    ),
+                    root: "root",
+                    routes: {
+                        "/": RouteConfig {
+                            filename: None,
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/piscine-js": RouteConfig {
+                            filename: Some(
+                                "./site/index.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/tetris": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "./site2",
+                            ),
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/hello": RouteConfig {
+                            filename: Some(
+                                "./hello.py",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/static": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "./site/static",
+                            ),
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/GraphQL": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "./GraphQL",
+                            ),
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/broken": RouteConfig {
+                            filename: Some(
+                                "./no_response.py",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/tetris_2": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "./site3",
+                            ),
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                    },
+                    cgi_handlers: {
+                        ".py": "python3",
+                    },
+                    errors: {},
+                    admin_access: false,
+                },
+            ],
+        },
+    ],
+    clients: [],
+    client_timeout: 30s,
+    admin: Admin {
+        config: AdminConfig {
+            username: "admin",
+            password: "pewpew321",
+        },
+        session_id: None,
+        session_created: None,
+        session_timeout: 3600s,
+    },
+}
+[*] Server initialized

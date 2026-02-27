@@ -51,6 +51,80 @@ curl http://localhost:8080/
 curl -F "file=@test.txt" http://localhost:8080/upload
 ```
 
+## CI Pipeline (GitHub Actions)
+
+This repository now includes an automated CI pipeline in `.github/workflows/ci.yml`.
+
+### What Runs in CI
+
+CI starts automatically on:
+
+- push to `main`
+- pull requests targeting `main`
+
+It runs two jobs on `macos-latest`:
+
+1. **Rust quality checks**
+    - `cargo fmt --all -- --check` (advisory)
+    - `cargo clippy --all-targets --all-features` (advisory)
+    - `cargo test --all --all-features -- --nocapture` (required)
+    - `cargo build --release` (required)
+
+2. **HTTP integration tests**
+    - Frees ports `8080` and `8081`
+    - Starts the server
+    - Waits for port readiness (`nc -z 127.0.0.1 8080`)
+    - Runs `scripts/ci_integration.sh`
+    - Uploads `server.log` as an artifact on every run
+
+### Integration Checks Covered
+
+`scripts/ci_integration.sh` validates:
+
+- `GET /` on `localhost:8080` returns `302` and points to `/login`
+- `GET /login` on `localhost:8080` returns `200`
+- `GET /this-does-not-exist` on `localhost:8080` returns `302`
+- `GET /hello` on `public:8081` returns `200` and CGI response body content
+- `GET /this-does-not-exist` on `public:8081` returns `404`
+
+All `curl` calls in CI use connection and total time limits to avoid hanging builds.
+
+### What You Need to Enable on GitHub
+
+Usually nothing extra is required beyond pushing the workflow file, but verify:
+
+1. **Actions are enabled**
+    - Repository → **Settings** → **Actions** → **General**
+    - Allow GitHub Actions for this repository
+
+2. **Workflow permissions are allowed**
+    - Keep default read permissions (the workflow only needs `contents: read`)
+
+3. **(Recommended) Protect `main`**
+    - Repository → **Settings** → **Branches** → Add rule for `main`
+    - Require status checks before merge
+    - Select both CI jobs as required checks
+
+### Next Steps
+
+1. Commit and push these files:
+    - `.github/workflows/ci.yml`
+    - `scripts/ci_integration.sh`
+    - `README.md`
+2. Open the **Actions** tab and confirm the `CI` workflow runs.
+3. If a run fails, download the `server-log` artifact and inspect the failing step.
+4. After CI is stable, make `main` protection rules required.
+
+### Optional Improvements
+
+- Make `fmt` and `clippy` blocking after cleanup of current warnings/style drift.
+- Add nightly stress/memory workflow based on `MEMORY_TESTING.md`.
+- Add badge to this README:
+
+```markdown
+![CI](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)
+```
+
 ## Configuration
 
 Edit `config/config.toml`:

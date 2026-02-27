@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  rust-quality:
+    name: Rust quality checks
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check (advisory)
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (advisory)
+        continue-on-error: true
+        run: cargo clippy --all-targets --all-features
+
+      - name: Unit tests
+        run: cargo test --all --all-features -- --nocapture
+
+      - name: Build release
+        run: cargo build --release
+
+  integration-http:
+    name: HTTP integration tests
+    runs-on: macos-latest
+    needs: rust-quality
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Free test ports
+        run: |
+          lsof -ti tcp:8080 | xargs kill -9 || true
+          lsof -ti tcp:8081 | xargs kill -9 || true
+
+      - name: Start server
+        run: |
+          cargo run --release > server.log 2>&1 &
+          echo $! > server.pid
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            if nc -z 127.0.0.1 8080; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not become ready in time"
+          exit 1
+
+      - name: Run integration checks
+        run: |
+          chmod +x scripts/ci_integration.sh
+          ./scripts/ci_integration.sh
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: server.log
+
+      - name: Stop server
+        if: always()
+        run: |
+          kill "$(cat server.pid)" || true
