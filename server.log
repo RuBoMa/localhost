@@ -1,4 +1,4 @@
-    Finished `release` profile [optimized] target(s) in 0.01s
+    Finished `release` profile [optimized] target(s) in 0.09s
      Running `target/release/localhost`
 Warning: Route '/' has no directory, redirect, upload_dir, or filename defined. Default index will be served.
 Warning: Route '/' has no directory, redirect, upload_dir, or filename defined. Default index will be served.
@@ -14,21 +14,6 @@ Config {
             ),
             root: "root",
             routes: {
-                "/login": RouteConfig {
-                    filename: Some(
-                        "login.html",
-                    ),
-                    directory: None,
-                    directory_listing: false,
-                    methods: Some(
-                        [
-                            "GET",
-                            "POST",
-                        ],
-                    ),
-                    redirect: None,
-                    upload_dir: None,
-                },
                 "/root": RouteConfig {
                     filename: None,
                     directory: Some(
@@ -47,6 +32,18 @@ Config {
                         "",
                     ),
                 },
+                "/": RouteConfig {
+                    filename: None,
+                    directory: None,
+                    directory_listing: false,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
+                    redirect: None,
+                    upload_dir: None,
+                },
                 "/static": RouteConfig {
                     filename: None,
                     directory: Some(
@@ -61,13 +58,16 @@ Config {
                     redirect: None,
                     upload_dir: None,
                 },
-                "/": RouteConfig {
-                    filename: None,
+                "/login": RouteConfig {
+                    filename: Some(
+                        "login.html",
+                    ),
                     directory: None,
                     directory_listing: false,
                     methods: Some(
                         [
                             "GET",
+                            "POST",
                         ],
                     ),
                     redirect: None,
@@ -78,16 +78,6 @@ Config {
                 ".py": "python3",
             },
             errors: {
-                "500": RouteConfig {
-                    filename: Some(
-                        "server_error.html",
-                    ),
-                    directory: None,
-                    directory_listing: false,
-                    methods: None,
-                    redirect: None,
-                    upload_dir: None,
-                },
                 "404": RouteConfig {
                     filename: Some(
                         "not_found.html",
@@ -108,6 +98,16 @@ Config {
                     redirect: None,
                     upload_dir: None,
                 },
+                "500": RouteConfig {
+                    filename: Some(
+                        "server_error.html",
+                    ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
             },
             admin_access: true,
         },
@@ -121,23 +121,11 @@ Config {
             ),
             root: "root",
             routes: {
-                "/": RouteConfig {
+                "/GraphQL": RouteConfig {
                     filename: None,
-                    directory: None,
-                    directory_listing: false,
-                    methods: Some(
-                        [
-                            "GET",
-                        ],
+                    directory: Some(
+                        "./GraphQL",
                     ),
-                    redirect: None,
-                    upload_dir: None,
-                },
-                "/piscine-js": RouteConfig {
-                    filename: Some(
-                        "./site/index.html",
-                    ),
-                    directory: None,
                     directory_listing: false,
                     methods: Some(
                         [
@@ -161,13 +149,15 @@ Config {
                     redirect: None,
                     upload_dir: None,
                 },
-                "/hello": RouteConfig {
-                    filename: Some(
-                        "./hello.py",
-                    ),
+                "/": RouteConfig {
+                    filename: None,
                     directory: None,
                     directory_listing: false,
-                    methods: None,
+                    methods: Some(
+                        [
+                            "GET",
+                        ],
+                    ),
                     redirect: None,
                     upload_dir: None,
                 },
@@ -185,11 +175,21 @@ Config {
                     redirect: None,
                     upload_dir: None,
                 },
-                "/GraphQL": RouteConfig {
-                    filename: None,
-                    directory: Some(
-                        "./GraphQL",
+                "/broken": RouteConfig {
+                    filename: Some(
+                        "./no_response.py",
                     ),
+                    directory: None,
+                    directory_listing: false,
+                    methods: None,
+                    redirect: None,
+                    upload_dir: None,
+                },
+                "/piscine-js": RouteConfig {
+                    filename: Some(
+                        "./site/index.html",
+                    ),
+                    directory: None,
                     directory_listing: false,
                     methods: Some(
                         [
@@ -199,9 +199,9 @@ Config {
                     redirect: None,
                     upload_dir: None,
                 },
-                "/broken": RouteConfig {
+                "/hello": RouteConfig {
                     filename: Some(
-                        "./no_response.py",
+                        "./hello.py",
                     ),
                     directory: None,
                     directory_listing: false,
@@ -237,131 +237,15 @@ Config {
         password: "pewpew321",
     },
 }
-[+] Bound to 127.0.0.1:8080
 [+] Bound to 127.0.0.1:8081
+[+] Bound to 127.0.0.1:8080
 Server {
     sockets: [
-        ServerSocket {
-            addr: 127.0.0.1:8080,
-            listener: TcpListener {
-                addr: 127.0.0.1:8080,
-                fd: 3,
-            },
-            configs: [
-                ServerConfig {
-                    server_address: "127.0.0.1",
-                    ports: [
-                        8080,
-                    ],
-                    server_name: Some(
-                        "localhost",
-                    ),
-                    root: "root",
-                    routes: {
-                        "/login": RouteConfig {
-                            filename: Some(
-                                "login.html",
-                            ),
-                            directory: None,
-                            directory_listing: false,
-                            methods: Some(
-                                [
-                                    "GET",
-                                    "POST",
-                                ],
-                            ),
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                        "/root": RouteConfig {
-                            filename: None,
-                            directory: Some(
-                                "",
-                            ),
-                            directory_listing: true,
-                            methods: Some(
-                                [
-                                    "GET",
-                                    "POST",
-                                    "DELETE",
-                                ],
-                            ),
-                            redirect: None,
-                            upload_dir: Some(
-                                "",
-                            ),
-                        },
-                        "/static": RouteConfig {
-                            filename: None,
-                            directory: Some(
-                                "static",
-                            ),
-                            directory_listing: true,
-                            methods: Some(
-                                [
-                                    "GET",
-                                ],
-                            ),
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                        "/": RouteConfig {
-                            filename: None,
-                            directory: None,
-                            directory_listing: false,
-                            methods: Some(
-                                [
-                                    "GET",
-                                ],
-                            ),
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                    },
-                    cgi_handlers: {
-                        ".py": "python3",
-                    },
-                    errors: {
-                        "500": RouteConfig {
-                            filename: Some(
-                                "server_error.html",
-                            ),
-                            directory: None,
-                            directory_listing: false,
-                            methods: None,
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                        "404": RouteConfig {
-                            filename: Some(
-                                "not_found.html",
-                            ),
-                            directory: None,
-                            directory_listing: false,
-                            methods: None,
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                        "405": RouteConfig {
-                            filename: Some(
-                                "method_not_allowed.html",
-                            ),
-                            directory: None,
-                            directory_listing: false,
-                            methods: None,
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                    },
-                    admin_access: true,
-                },
-            ],
-        },
         ServerSocket {
             addr: 127.0.0.1:8081,
             listener: TcpListener {
                 addr: 127.0.0.1:8081,
-                fd: 4,
+                fd: 3,
             },
             configs: [
                 ServerConfig {
@@ -374,23 +258,11 @@ Server {
                     ),
                     root: "root",
                     routes: {
-                        "/": RouteConfig {
+                        "/GraphQL": RouteConfig {
                             filename: None,
-                            directory: None,
-                            directory_listing: false,
-                            methods: Some(
-                                [
-                                    "GET",
-                                ],
+                            directory: Some(
+                                "./GraphQL",
                             ),
-                            redirect: None,
-                            upload_dir: None,
-                        },
-                        "/piscine-js": RouteConfig {
-                            filename: Some(
-                                "./site/index.html",
-                            ),
-                            directory: None,
                             directory_listing: false,
                             methods: Some(
                                 [
@@ -414,13 +286,15 @@ Server {
                             redirect: None,
                             upload_dir: None,
                         },
-                        "/hello": RouteConfig {
-                            filename: Some(
-                                "./hello.py",
-                            ),
+                        "/": RouteConfig {
+                            filename: None,
                             directory: None,
                             directory_listing: false,
-                            methods: None,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
                             redirect: None,
                             upload_dir: None,
                         },
@@ -438,11 +312,21 @@ Server {
                             redirect: None,
                             upload_dir: None,
                         },
-                        "/GraphQL": RouteConfig {
-                            filename: None,
-                            directory: Some(
-                                "./GraphQL",
+                        "/broken": RouteConfig {
+                            filename: Some(
+                                "./no_response.py",
                             ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/piscine-js": RouteConfig {
+                            filename: Some(
+                                "./site/index.html",
+                            ),
+                            directory: None,
                             directory_listing: false,
                             methods: Some(
                                 [
@@ -452,9 +336,9 @@ Server {
                             redirect: None,
                             upload_dir: None,
                         },
-                        "/broken": RouteConfig {
+                        "/hello": RouteConfig {
                             filename: Some(
-                                "./no_response.py",
+                                "./hello.py",
                             ),
                             directory: None,
                             directory_listing: false,
@@ -482,6 +366,122 @@ Server {
                     },
                     errors: {},
                     admin_access: false,
+                },
+            ],
+        },
+        ServerSocket {
+            addr: 127.0.0.1:8080,
+            listener: TcpListener {
+                addr: 127.0.0.1:8080,
+                fd: 4,
+            },
+            configs: [
+                ServerConfig {
+                    server_address: "127.0.0.1",
+                    ports: [
+                        8080,
+                    ],
+                    server_name: Some(
+                        "localhost",
+                    ),
+                    root: "root",
+                    routes: {
+                        "/root": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "",
+                            ),
+                            directory_listing: true,
+                            methods: Some(
+                                [
+                                    "GET",
+                                    "POST",
+                                    "DELETE",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: Some(
+                                "",
+                            ),
+                        },
+                        "/": RouteConfig {
+                            filename: None,
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/static": RouteConfig {
+                            filename: None,
+                            directory: Some(
+                                "static",
+                            ),
+                            directory_listing: true,
+                            methods: Some(
+                                [
+                                    "GET",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "/login": RouteConfig {
+                            filename: Some(
+                                "login.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: Some(
+                                [
+                                    "GET",
+                                    "POST",
+                                ],
+                            ),
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                    },
+                    cgi_handlers: {
+                        ".py": "python3",
+                    },
+                    errors: {
+                        "404": RouteConfig {
+                            filename: Some(
+                                "not_found.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "405": RouteConfig {
+                            filename: Some(
+                                "method_not_allowed.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                        "500": RouteConfig {
+                            filename: Some(
+                                "server_error.html",
+                            ),
+                            directory: None,
+                            directory_listing: false,
+                            methods: None,
+                            redirect: None,
+                            upload_dir: None,
+                        },
+                    },
+                    admin_access: true,
                 },
             ],
         },
