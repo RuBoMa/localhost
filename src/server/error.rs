@@ -57,3 +57,57 @@ pub fn error_response_from_config(status: u16, config: &ServerConfig) -> Respons
         .header("Content-Type", "text/html; charset=utf-8")
         .with_body(body)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::error_response_from_config;
+    use crate::config::{RouteConfig, ServerConfig};
+    use std::collections::HashMap;
+
+    fn base_config() -> ServerConfig {
+        ServerConfig {
+            server_address: "127.0.0.1".to_string(),
+            ports: vec![8080],
+            server_name: Some("localhost".to_string()),
+            root: "root".to_string(),
+            routes: HashMap::new(),
+            cgi_handlers: HashMap::new(),
+            errors: HashMap::new(),
+            admin_access: false,
+        }
+    }
+
+    #[test]
+    fn fallback_response_has_expected_status_and_content_type() {
+        let config = base_config();
+        let response = error_response_from_config(404, &config);
+
+        assert_eq!(response.status_code, 404);
+        assert_eq!(
+            response.headers.get("Content-Type").map(String::as_str),
+            Some("text/html; charset=utf-8")
+        );
+    }
+
+    #[test]
+    fn missing_custom_error_filename_falls_back_to_default() {
+        let mut config = base_config();
+        config.errors.insert(
+            "500".to_string(),
+            RouteConfig {
+                filename: None,
+                directory: None,
+                directory_listing: false,
+                methods: None,
+                redirect: None,
+                upload_dir: None,
+            },
+        );
+
+        let response = error_response_from_config(500, &config);
+        let body = String::from_utf8_lossy(&response.body);
+
+        assert_eq!(response.status_code, 500);
+        assert!(body.contains("500 Internal Server Error"));
+    }
+}

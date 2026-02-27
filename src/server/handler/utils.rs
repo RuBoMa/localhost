@@ -1,8 +1,8 @@
 use crate::config::ServerConfig;
 use crate::core::{Request, Response};
+use crate::server::error_response_from_config;
 use std::path::Path;
 use std::process::Command;
-use crate::server::error_response_from_config;
 
 /// Very basic MIME type guessing based on file extension.
 /// Extend as needed for your use case.
@@ -132,7 +132,7 @@ pub fn parse_cgi_output(output: &[u8], config: &ServerConfig) -> Response {
         (&output[..pos], &output[pos + 2..])
     } else {
         let resp = Response::new(200, "OK");
-        return resp.with_body(output.to_vec())
+        return resp.with_body(output.to_vec());
     };
 
     let header_text = String::from_utf8_lossy(header_bytes);
@@ -141,7 +141,9 @@ pub fn parse_cgi_output(output: &[u8], config: &ServerConfig) -> Response {
     let mut headers: Vec<(String, String)> = Vec::new();
 
     for line in header_text.lines() {
-        if line.trim().is_empty() { continue; }
+        if line.trim().is_empty() {
+            continue;
+        }
         if let Some((name, value)) = line.split_once(':') {
             let name = name.trim();
             let value = value.trim();
@@ -193,7 +195,9 @@ pub fn check_name_and_port(
 
     // Parse server name and port from host header
     let (server_name, host_port) = match host.rsplit_once(':') {
-        Some((name, port_str)) if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) => {
+        Some((name, port_str))
+            if !name.is_empty() && port_str.chars().all(|c| c.is_ascii_digit()) =>
+        {
             let p = match port_str.parse::<u16>() {
                 Ok(v) => v,
                 Err(_) => {
@@ -220,4 +224,87 @@ pub fn check_name_and_port(
     }
 
     Ok((server_name.to_string(), host_port))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        default_reason_phrase, find_sequence, guess_mime_type, resolve_cgi_interpreter, split_uri,
+    };
+    use crate::config::{RouteConfig, ServerConfig};
+    use std::collections::HashMap;
+    use std::path::Path;
+
+    fn empty_route() -> RouteConfig {
+        RouteConfig {
+            filename: None,
+            directory: None,
+            directory_listing: false,
+            methods: None,
+            redirect: None,
+            upload_dir: None,
+        }
+    }
+
+    fn base_server_config() -> ServerConfig {
+        ServerConfig {
+            server_address: "127.0.0.1".to_string(),
+            ports: vec![8080],
+            server_name: Some("localhost".to_string()),
+            root: "root".to_string(),
+            routes: HashMap::from([("/".to_string(), empty_route())]),
+            cgi_handlers: HashMap::new(),
+            errors: HashMap::new(),
+            admin_access: false,
+        }
+    }
+
+    #[test]
+    fn split_uri_with_query() {
+        let (path, query) = split_uri("/hello?name=roope&lang=fi");
+        assert_eq!(path, "/hello");
+        assert_eq!(query, "name=roope&lang=fi");
+    }
+
+    #[test]
+    fn split_uri_without_query() {
+        let (path, query) = split_uri("/hello");
+        assert_eq!(path, "/hello");
+        assert_eq!(query, "");
+    }
+
+    #[test]
+    fn find_sequence_returns_index() {
+        let pos = find_sequence(b"abc\r\n\r\nxyz", b"\r\n\r\n");
+        assert_eq!(pos, Some(3));
+    }
+
+    #[test]
+    fn find_sequence_returns_none_when_missing() {
+        let pos = find_sequence(b"abcdef", b"\r\n\r\n");
+        assert_eq!(pos, None);
+    }
+
+    #[test]
+    fn default_reason_phrase_known_and_unknown() {
+        assert_eq!(default_reason_phrase(404), "Not Found");
+        assert_eq!(default_reason_phrase(999), "OK");
+    }
+
+    #[test]
+    fn guess_mime_type_detects_known_extension() {
+        assert_eq!(guess_mime_type("index.html"), "text/html");
+        assert_eq!(guess_mime_type("logo.png"), "image/png");
+    }
+
+    #[test]
+    fn resolve_cgi_interpreter_matches_case_variants() {
+        let mut config = base_server_config();
+        config
+            .cgi_handlers
+            .insert(".py".to_string(), "python3".to_string());
+
+        let interpreter = resolve_cgi_interpreter(Path::new("hello.PY"), &config);
+        assert_eq!(interpreter.as_deref(), Some("python3"));
+    }
 }
