@@ -325,7 +325,11 @@ mod tests {
         "#;
         let config: Config = toml::from_str(toml).unwrap();
         let err = config.validate().unwrap_err();
-        assert!(err.contains("non-empty 'root'"), "expected 'non-empty root' in: {}", err);
+        assert!(
+            err.contains("non-empty 'root'"),
+            "expected 'non-empty root' in: {}",
+            err
+        );
     }
 
     #[test]
@@ -338,7 +342,11 @@ mod tests {
         "#;
         let config: Config = toml::from_str(toml).unwrap();
         let err = config.validate().unwrap_err();
-        assert!(err.contains("does not exist"), "expected 'does not exist' in: {}", err);
+        assert!(
+            err.contains("does not exist"),
+            "expected 'does not exist' in: {}",
+            err
+        );
     }
 
     #[test]
@@ -361,7 +369,11 @@ mod tests {
         );
         let config: Config = toml::from_str(&toml).unwrap();
         let err = config.validate().unwrap_err();
-        assert!(err.contains("Duplicate") && err.contains("8080"), "expected duplicate port in: {}", err);
+        assert!(
+            err.contains("Duplicate") && err.contains("8080"),
+            "expected duplicate port in: {}",
+            err
+        );
     }
 
     #[test]
