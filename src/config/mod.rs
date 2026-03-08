@@ -242,3 +242,294 @@ fn default_admin_username() -> String {
 fn default_admin_password() -> String {
     "password123".to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Create a temporary directory for tests that require a real root path.
+    fn temp_root() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join("localhost_config_test");
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn test_parse_minimal_config_defaults() {
+        let root = temp_root();
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        assert_eq!(config.client_timeout_secs, 30);
+        assert_eq!(config.admin.username, "admin");
+        assert_eq!(config.admin.password, "password123");
+        assert_eq!(config.servers.len(), 1);
+        assert_eq!(config.servers[0].ports, vec![8080]);
+        assert!(config.servers[0].server_name.is_none());
+    }
+
+    #[test]
+    fn test_parse_config_with_custom_timeout_and_admin() {
+        let root = temp_root();
+        let toml = format!(
+            r#"
+            client_timeout_secs = 60
+            [admin]
+            username = "custom_user"
+            password = "custom_pass"
+
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [9000]
+            root = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        assert_eq!(config.client_timeout_secs, 60);
+        assert_eq!(config.admin.username, "custom_user");
+        assert_eq!(config.admin.password, "custom_pass");
+    }
+
+    #[test]
+    fn test_validate_empty_ports_fails() {
+        let root = temp_root();
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = []
+            root = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        let err = config.validate().unwrap_err();
+        assert!(err.contains("no ports"), "expected 'no ports' in: {}", err);
+    }
+
+    #[test]
+    fn test_validate_empty_root_fails() {
+        let toml = r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "   "
+        "#;
+        let config: Config = toml::from_str(toml).unwrap();
+        let err = config.validate().unwrap_err();
+        assert!(err.contains("non-empty 'root'"), "expected 'non-empty root' in: {}", err);
+    }
+
+    #[test]
+    fn test_validate_root_not_a_directory_fails() {
+        let toml = r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "/nonexistent_path_12345_xyz"
+        "#;
+        let config: Config = toml::from_str(toml).unwrap();
+        let err = config.validate().unwrap_err();
+        assert!(err.contains("does not exist"), "expected 'does not exist' in: {}", err);
+    }
+
+    #[test]
+    fn test_validate_duplicate_nameless_port_fails() {
+        let root = temp_root();
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\"),
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        let err = config.validate().unwrap_err();
+        assert!(err.contains("Duplicate") && err.contains("8080"), "expected duplicate port in: {}", err);
+    }
+
+    #[test]
+    fn test_validate_route_slash_with_directory_fails() {
+        let root = temp_root();
+        let sub = root.join("files");
+        let _ = std::fs::create_dir_all(&sub);
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+            [servers.routes."/"]
+            directory = "files"
+            "#,
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        let err = config.validate().unwrap_err();
+        assert!(
+            err.contains("Route '/' cannot serve a directory"),
+            "expected route '/' directory error in: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_validate_upload_dir_not_directory_fails() {
+        let root = temp_root();
+        let file_path = root.join("upload_file");
+        let _ = std::fs::File::create(&file_path);
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+            [servers.routes."/upload"]
+            upload_dir = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\"),
+            file_path.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        let err = config.validate().unwrap_err();
+        assert!(
+            err.contains("upload_dir") && err.contains("not a directory"),
+            "expected upload_dir error in: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn test_validate_valid_config_succeeds() {
+        let root = temp_root();
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        let config: Config = toml::from_str(&toml).unwrap();
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_from_file_missing_fails() {
+        let result = Config::from_file("/nonexistent_config_12345.toml");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("Failed to read config") || err.contains("read"));
+    }
+
+    #[test]
+    fn test_from_file_invalid_toml_fails() {
+        let root = temp_root();
+        let path = root.join("bad.toml");
+        std::fs::write(&path, "invalid toml [[[[").unwrap();
+        let result = Config::from_file(&path);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.contains("parse") || err.contains("TOML"));
+    }
+
+    #[test]
+    fn test_from_file_valid_succeeds() {
+        let root = temp_root();
+        let path = root.join("valid.toml");
+        let toml = format!(
+            r#"
+            [[servers]]
+            server_address = "127.0.0.1"
+            ports = [8080]
+            root = "{}"
+            "#,
+            root.display().to_string().replace('\\', "\\\\")
+        );
+        std::fs::write(&path, &toml).unwrap();
+        let config = Config::from_file(&path).unwrap();
+        assert_eq!(config.servers.len(), 1);
+        assert_eq!(config.servers[0].ports[0], 8080);
+    }
+
+    #[test]
+    fn test_route_config_check_method_allowed() {
+        let cfg = RouteConfig {
+            filename: None,
+            directory: None,
+            directory_listing: false,
+            methods: Some(vec!["GET".to_string(), "POST".to_string()]),
+            redirect: None,
+            upload_dir: None,
+        };
+        assert!(cfg.check_method("GET").is_ok());
+        assert!(cfg.check_method("get").is_ok());
+        assert!(cfg.check_method("POST").is_ok());
+    }
+
+    #[test]
+    fn test_route_config_check_method_disallowed() {
+        let cfg = RouteConfig {
+            filename: None,
+            directory: None,
+            directory_listing: false,
+            methods: Some(vec!["GET".to_string()]),
+            redirect: None,
+            upload_dir: None,
+        };
+        let err = cfg.check_method("POST").unwrap_err();
+        assert_eq!(err, "GET");
+    }
+
+    #[test]
+    fn test_route_config_check_method_none_always_ok() {
+        let cfg = RouteConfig {
+            filename: None,
+            directory: None,
+            directory_listing: false,
+            methods: None,
+            redirect: None,
+            upload_dir: None,
+        };
+        assert!(cfg.check_method("GET").is_ok());
+        assert!(cfg.check_method("DELETE").is_ok());
+    }
+
+    #[test]
+    fn test_redirect_config_default_code() {
+        let toml = r#"
+            to = "/other"
+        "#;
+        let r: RedirectConfig = toml::from_str(toml).unwrap();
+        assert_eq!(r.to, "/other");
+        assert_eq!(r.code, 302);
+    }
+
+    #[test]
+    fn test_redirect_config_custom_code() {
+        let toml = r#"
+            to = "/moved"
+            code = 301
+        "#;
+        let r: RedirectConfig = toml::from_str(toml).unwrap();
+        assert_eq!(r.to, "/moved");
+        assert_eq!(r.code, 301);
+    }
+}
