@@ -190,8 +190,9 @@ mod tests {
         assert_eq!(r.status_code, 302);
         assert_eq!(r.reason_phrase, "Found");
         assert_eq!(r.headers.get("Location"), Some(&"/other".to_string()));
-        assert!(r.body.contains(&b"302"[..]));
-        assert!(r.body.contains(&b"/other"[..]));
+        let body_str = std::str::from_utf8(&r.body).unwrap();
+        assert!(body_str.contains("302"));
+        assert!(body_str.contains("/other"));
     }
 
     #[test]
