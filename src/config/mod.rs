@@ -321,7 +321,7 @@ mod tests {
             [[servers]]
             server_address = "127.0.0.1"
             ports = [8080]
-            root = "   "
+            root = "    "
         "#;
         let config: Config = toml::from_str(toml).unwrap();
         let err = config.validate().unwrap_err();
