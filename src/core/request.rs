@@ -235,7 +235,12 @@ mod tests {
         let raw = b"GET / HTTP/1.1\r\nHost: x\r\n\r\nignored";
         let (req, consumed) = Request::parse(raw).unwrap();
         // No Content-Length/chunked: no body consumed. Consumed = header + \r\n\r\n (exact length can vary by platform).
-        assert!(consumed < raw.len(), "consumed {} should be less than raw len {}", consumed, raw.len());
+        assert!(
+            consumed < raw.len(),
+            "consumed {} should be less than raw len {}",
+            consumed,
+            raw.len()
+        );
         assert!(req.body.is_empty());
     }
 
