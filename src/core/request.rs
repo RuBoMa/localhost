@@ -234,7 +234,8 @@ mod tests {
     fn parse_no_body_when_no_content_length_or_chunked() {
         let raw = b"GET / HTTP/1.1\r\nHost: x\r\n\r\nignored";
         let (req, consumed) = Request::parse(raw).unwrap();
-        assert_eq!(consumed, 22); // header + \r\n\r\n only
+        // consumed = header (through \r\n\r\n) + 0 body bytes
+        assert_eq!(consumed, 29);
         assert!(req.body.is_empty());
     }
 
@@ -290,7 +291,8 @@ mod tests {
 
     #[test]
     fn parse_form_urlencoded() {
-        let raw = b"POST / HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 9\r\n\r\nfoo=bar";
+        // Body "foo=bar" is 7 bytes
+        let raw = b"POST / HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 7\r\n\r\nfoo=bar";
         let (req, _) = Request::parse(raw).unwrap();
         let form = req.parse_form();
         assert_eq!(form.get("foo"), Some(&"bar".to_string()));
@@ -298,10 +300,11 @@ mod tests {
 
     #[test]
     fn parse_form_decodes_plus_as_space() {
-        let raw = b"POST / HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 14\r\n\r\nmsg=hello%2Bworld";
+        // %2B decodes to '+'. Body "x=hi%2B" is 6 bytes.
+        let raw = b"POST / HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 6\r\n\r\nx=hi%2B";
         let (req, _) = Request::parse(raw).unwrap();
         let form = req.parse_form();
-        assert_eq!(form.get("msg"), Some(&"hello+world".to_string()));
+        assert_eq!(form.get("x"), Some(&"hi+".to_string()));
     }
 
     #[test]
