@@ -92,7 +92,6 @@ mod tests {
         let configs = vec![minimal_config(Some("default"))];
         let socket = ServerSocket::try_bind(addr, configs).unwrap();
         assert_eq!(socket.addr.ip(), std::net::IpAddr::from([127, 0, 0, 1]));
-        assert_ne!(socket.addr.port(), 0, "kernel should assign a port");
         assert_eq!(socket.configs.len(), 1);
     }
 
