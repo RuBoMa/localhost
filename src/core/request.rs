@@ -202,7 +202,10 @@ mod tests {
     fn parse_headers_normalized_to_lowercase() {
         let raw = b"GET / HTTP/1.1\r\nContent-Type: text/plain\r\n\r\n";
         let (req, _) = Request::parse(raw).unwrap();
-        assert_eq!(req.headers.get("content-type"), Some(&"text/plain".to_string()));
+        assert_eq!(
+            req.headers.get("content-type"),
+            Some(&"text/plain".to_string())
+        );
     }
 
     #[test]

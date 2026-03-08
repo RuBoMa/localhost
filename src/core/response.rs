@@ -151,8 +151,7 @@ mod tests {
 
     #[test]
     fn set_cookie_with_path_and_http_only() {
-        let r = Response::new(200, "OK")
-            .set_cookie("sid", "xyz", Some("/"), None, true);
+        let r = Response::new(200, "OK").set_cookie("sid", "xyz", Some("/"), None, true);
         assert!(r.cookies[0].contains("sid=xyz"));
         assert!(r.cookies[0].contains("Path=/"));
         assert!(r.cookies[0].contains("HttpOnly"));
