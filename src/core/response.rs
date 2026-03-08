@@ -115,3 +115,90 @@ impl Response {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_sets_status_and_reason() {
+        let r = Response::new(200, "OK");
+        assert_eq!(r.status_code, 200);
+        assert_eq!(r.reason_phrase, "OK");
+        assert!(r.headers.is_empty());
+        assert!(r.body.is_empty());
+    }
+
+    #[test]
+    fn with_body_sets_content_length_and_body() {
+        let r = Response::new(200, "OK").with_body(b"hello");
+        assert_eq!(r.body, b"hello");
+        assert_eq!(r.headers.get("Content-Length"), Some(&"5".to_string()));
+    }
+
+    #[test]
+    fn header_adds_header() {
+        let r = Response::new(200, "OK").header("X-Custom", "value");
+        assert_eq!(r.headers.get("X-Custom"), Some(&"value".to_string()));
+    }
+
+    #[test]
+    fn set_cookie_basic() {
+        let r = Response::new(200, "OK").set_cookie("sid", "abc", None, None, false);
+        assert_eq!(r.cookies.len(), 1);
+        assert_eq!(r.cookies[0], "sid=abc");
+    }
+
+    #[test]
+    fn set_cookie_with_path_and_http_only() {
+        let r = Response::new(200, "OK")
+            .set_cookie("sid", "xyz", Some("/"), None, true);
+        assert!(r.cookies[0].contains("sid=xyz"));
+        assert!(r.cookies[0].contains("Path=/"));
+        assert!(r.cookies[0].contains("HttpOnly"));
+    }
+
+    #[test]
+    fn set_cookie_with_max_age() {
+        let r = Response::new(200, "OK").set_cookie("s", "v", None, Some(3600), false);
+        assert!(r.cookies[0].contains("Max-Age=3600"));
+    }
+
+    #[test]
+    fn to_bytes_includes_status_headers_and_body() {
+        let r = Response::new(200, "OK")
+            .header("Content-Type", "text/plain")
+            .with_body(b"body");
+        let bytes = r.to_bytes();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert!(s.starts_with("HTTP/1.1 200 OK\r\n"));
+        assert!(s.contains("Content-Type: text/plain\r\n"));
+        assert!(s.contains("Content-Length: 4\r\n"));
+        assert!(s.ends_with("\r\n\r\nbody"));
+    }
+
+    #[test]
+    fn to_bytes_includes_set_cookie() {
+        let r = Response::new(200, "OK").set_cookie("k", "v", None, None, false);
+        let bytes = r.to_bytes();
+        let s = std::str::from_utf8(&bytes).unwrap();
+        assert!(s.contains("Set-Cookie: k=v\r\n"));
+    }
+
+    #[test]
+    fn redirect_302_has_location_and_found() {
+        let r = Response::redirect("/other".to_string(), 302);
+        assert_eq!(r.status_code, 302);
+        assert_eq!(r.reason_phrase, "Found");
+        assert_eq!(r.headers.get("Location"), Some(&"/other".to_string()));
+        assert!(r.body.contains(&b"302"[..]));
+        assert!(r.body.contains(&b"/other"[..]));
+    }
+
+    #[test]
+    fn redirect_301_moved_permanently() {
+        let r = Response::redirect("https://example.com".to_string(), 301);
+        assert_eq!(r.status_code, 301);
+        assert_eq!(r.reason_phrase, "Moved Permanently");
+    }
+}
