@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{self, ErrorKind};
 use std::net::{SocketAddr, TcpListener};
 
@@ -65,5 +66,65 @@ impl ServerSocket {
         }
 
         new_clients
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn minimal_config(server_name: Option<&str>) -> ServerConfig {
+        ServerConfig {
+            server_address: "127.0.0.1".to_string(),
+            ports: vec![8080],
+            server_name: server_name.map(String::from),
+            root: "/tmp".to_string(),
+            routes: HashMap::new(),
+            cgi_handlers: HashMap::new(),
+            errors: HashMap::new(),
+            admin_access: false,
+        }
+    }
+
+    #[test]
+    fn try_bind_succeeds_with_port_zero() {
+        let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+        let configs = vec![minimal_config(Some("default"))];
+        let socket = ServerSocket::try_bind(addr, configs).unwrap();
+        assert_eq!(socket.addr.ip(), std::net::IpAddr::from([127, 0, 0, 1]));
+        assert_ne!(socket.addr.port(), 0, "kernel should assign a port");
+        assert_eq!(socket.configs.len(), 1);
+    }
+
+    #[test]
+    fn resolve_config_returns_matching_config_by_name() {
+        let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+        let configs = vec![minimal_config(Some("alpha")), minimal_config(Some("beta"))];
+        let socket = ServerSocket::try_bind(addr, configs).unwrap();
+        let cfg_a = socket.resolve_config(Some("alpha"));
+        let cfg_b = socket.resolve_config(Some("beta"));
+        assert_eq!(cfg_a.server_name.as_deref(), Some("alpha"));
+        assert_eq!(cfg_b.server_name.as_deref(), Some("beta"));
+    }
+
+    #[test]
+    fn resolve_config_fallback_to_first_when_unknown_name() {
+        let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+        let configs = vec![minimal_config(Some("only")), minimal_config(Some("other"))];
+        let socket = ServerSocket::try_bind(addr, configs).unwrap();
+        let cfg = socket.resolve_config(Some("unknown"));
+        assert_eq!(cfg.server_name.as_deref(), Some("only"));
+    }
+
+    #[test]
+    fn resolve_config_fallback_to_first_when_none() {
+        let addr = SocketAddr::from(([127, 0, 0, 1], 0));
+        let configs = vec![
+            minimal_config(Some("first")),
+            minimal_config(Some("second")),
+        ];
+        let socket = ServerSocket::try_bind(addr, configs).unwrap();
+        let cfg = socket.resolve_config(None);
+        assert_eq!(cfg.server_name.as_deref(), Some("first"));
     }
 }
